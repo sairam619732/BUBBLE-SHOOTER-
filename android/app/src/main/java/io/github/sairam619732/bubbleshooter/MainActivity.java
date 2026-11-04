@@ -225,6 +225,12 @@ public class MainActivity extends Activity {
         }
 
         @Override
+        public void onPageFinished(WebView view, String url) {
+            // Insets may have been sent before the page could listen; send them again.
+            view.requestApplyInsets();
+        }
+
+        @Override
         public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
             Uri uri = request.getUrl();
             if (ASSET_HOST.equals(uri.getHost())) return false;
