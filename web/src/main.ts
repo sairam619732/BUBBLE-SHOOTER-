@@ -1,7 +1,9 @@
-import '@fontsource/fredoka/400.css';
-import '@fontsource/fredoka/500.css';
-import '@fontsource/fredoka/600.css';
-import '@fontsource/fredoka/700.css';
+import '@fontsource/lilita-one/latin-400.css';
+import '@fontsource/lilita-one/latin-ext-400.css';
+import '@fontsource/nunito/latin-700.css';
+import '@fontsource/nunito/latin-800.css';
+import '@fontsource/nunito/latin-900.css';
+import '@fontsource/nunito/latin-ext-800.css';
 import './style.css';
 import { App } from './app';
 import { MenuScene } from './ui/menuScene';

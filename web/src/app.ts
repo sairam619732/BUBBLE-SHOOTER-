@@ -38,7 +38,7 @@ export class App {
     readonly canvas: HTMLCanvasElement,
     readonly ui: HTMLElement,
   ) {
-    this.ctx = canvas.getContext('2d', { alpha: false })!;
+    this.ctx = canvas.getContext('2d')!;
     setSymbols(settings.symbols);
   }
 
@@ -77,6 +77,7 @@ export class App {
     s?.update(dt);
     const ctx = this.ctx;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    ctx.clearRect(0, 0, this.w, this.h);
     this.bg.draw(ctx, this.w, this.h);
     s?.draw(ctx, this.dpr, this.w, this.h);
   }
@@ -89,6 +90,7 @@ export class App {
     this.canvas.height = Math.round(this.h * this.dpr);
     this.canvas.style.width = this.w + 'px';
     this.canvas.style.height = this.h + 'px';
+    this.bg.resize(this.w, this.h);
     this.scene?.resize(this.w, this.h);
   }
 

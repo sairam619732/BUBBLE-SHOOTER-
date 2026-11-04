@@ -1,6 +1,7 @@
 import { sound } from '../audio/sound';
 import { vibrate } from '../platform/native';
 import { settings } from '../storage';
+import { IconName, icon } from './icons';
 
 type Child = Node | string | number | null | undefined | false;
 type Attrs = {
@@ -31,9 +32,14 @@ export function h<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Attrs | 
   return el;
 }
 
-/** Standard game button with click sound + haptic tick. */
-export function button(label: Child, onClick: () => void, cls = 'btn'): HTMLButtonElement {
-  const b = h('button', { class: cls, type: 'button' }, label);
+/**
+ * Standard game button with click sound + haptic tick.
+ * `cls` is the full class list, e.g. 'btn c-lime btn-wide'. Text labels are wrapped in a span
+ * so they sit above the glossy highlight.
+ */
+export function button(label: Child | Child[], onClick: () => void, cls = 'btn c-blue', ico?: IconName): HTMLButtonElement {
+  const kids = (Array.isArray(label) ? label : [label]).map((c) => (typeof c === 'string' || typeof c === 'number' ? h('span', null, String(c)) : c));
+  const b = h('button', { class: cls, type: 'button' }, ico ? icon(ico) : null, ...kids);
   b.addEventListener('click', (e) => {
     e.stopPropagation();
     sound.unlock();
@@ -44,14 +50,39 @@ export function button(label: Child, onClick: () => void, cls = 'btn'): HTMLButt
   return b;
 }
 
-export function haptic(ms: number): void {
-  if (settings.vibration) vibrate(ms);
+/** Round icon-only button. */
+export function iconButton(ico: IconName, label: string, onClick: () => void, color = 'c-blue', extra = ''): HTMLButtonElement {
+  const b = button(null, onClick, `btn btn-round ${color} ${extra}`.trim(), ico);
+  b.setAttribute('aria-label', label);
+  b.title = label;
+  return b;
 }
 
-export function starsRow(n: number, max = 3, cls = 'stars'): HTMLElement {
-  const row = h('div', { class: cls });
-  for (let i = 0; i < max; i++) row.append(h('span', { class: i < n ? 'star on' : 'star' }, '★'));
-  return row;
+const TAIL = '<path d="M30 2H4.5c-1.4 0-2.1 1.6-1.2 2.6L11 21.5 3.3 38.4c-.9 1 0 2.6 1.2 2.6H30z" stroke="#1c1442" stroke-width="3" stroke-linejoin="round"/><path d="M30 2v9l-6-9z" fill="#1c1442" fill-opacity=".35"/>';
+
+/** Folded ribbon banner. Place it inside a `.panel.titled` or use `inline` for a free-standing one. */
+export function ribbon(text: string, color = 'c-pink', inline = false): HTMLElement {
+  const tail = (side: string) => {
+    const t = document.createElement('template');
+    t.innerHTML = `<svg class="rb-tail ${side}" viewBox="0 0 32 44" aria-hidden="true">${TAIL}</svg>`;
+    return t.content.firstElementChild as SVGElement;
+  };
+  const el = h('div', { class: `ribbon ${color}${inline ? ' inline' : ''}` }, tail('l'), h('div', { class: 'rb-band' }, text), tail('r'));
+  return el;
+}
+
+/** Cream card with a ribbon title. */
+export function titledPanel(title: string, color: string, ...children: Child[]): HTMLElement {
+  return h('div', { class: 'panel titled' }, ribbon(title, color), ...children);
+}
+
+/** Standard top bar: back button, title, optional right-hand element. */
+export function topBar(title: string, onBack: () => void, right?: HTMLElement | null): HTMLElement {
+  return h('div', { class: 'topbar' }, iconButton('back', 'Back', onBack, 'c-blue'), h('h2', { class: 'screen-title' }, title), right ?? h('span'));
+}
+
+export function haptic(ms: number): void {
+  if (settings.vibration) vibrate(ms);
 }
 
 export function toast(text: string, ms = 2200): void {
@@ -76,10 +107,10 @@ export function confirmDialog(root: HTMLElement, title: string, text: string, ye
       { class: 'overlay' },
       h(
         'div',
-        { class: 'panel dialog pop-in' },
-        h('h2', null, title),
-        h('p', { class: 'muted' }, text),
-        h('div', { class: 'row' }, button(no, () => close(false), 'btn btn-ghost'), button(yes, () => close(true), 'btn btn-hot')),
+        { class: 'panel titled dialog pop-in' },
+        ribbon(title, 'c-purple'),
+        h('p', null, text),
+        h('div', { class: 'row' }, button(no, () => close(false), 'btn c-cream'), button(yes, () => close(true), 'btn c-red')),
       ),
     );
     root.append(overlay);

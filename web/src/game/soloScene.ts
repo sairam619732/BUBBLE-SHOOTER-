@@ -8,10 +8,15 @@ import { ShotEvent, SoloGame, SoloMode } from '../core/solo';
 import { keepScreenOn } from '../platform/native';
 import { ThemeName, worldTheme } from '../render/background';
 import { BoardView } from '../render/boardView';
+import { THEME_INFO } from '../render/scenes';
 import { progress, recordLevel, saveStats, settings, stats } from '../storage';
-import { button, h, haptic, starsRow } from '../ui/dom';
+import { button, h, haptic, iconButton, ribbon } from '../ui/dom';
+import { IconName, icon } from '../ui/icons';
 import { LevelSelectScene } from '../ui/levelSelect';
 import { pauseMenu } from '../ui/pauseMenu';
+
+/** Where the 2-star mark sits on the score bar (percent). */
+const STAR2_AT = 62;
 
 /** Levels and Arcade gameplay. */
 export class SoloScene implements Scene {
@@ -20,12 +25,13 @@ export class SoloScene implements Scene {
   private view: BoardView;
   private root!: HTMLElement;
   private hud!: {
+    el: HTMLElement;
     score: HTMLElement;
     title: HTMLElement;
-    pill: HTMLElement;
-    pillValue: HTMLElement;
-    meter: HTMLElement;
+    badge: HTMLElement;
+    badgeValue: HTMLElement;
     fill: HTMLElement;
+    marks: HTMLElement[];
   };
   private overlay: HTMLElement | null = null;
   private paused = false;
@@ -55,44 +61,50 @@ export class SoloScene implements Scene {
   mount(root: HTMLElement): void {
     this.root = root;
     keepScreenOn(true);
-    const score = h('div', { class: 'hud-score' }, '0');
-    const title = h('div', { class: 'hud-title' }, this.mode === 'level' ? `Level ${this.levelId}` : 'Arcade');
-    const pillValue = h('b', null, '');
-    const pill = h('div', { class: 'hud-pill' }, pillValue, h('small', null, this.mode === 'level' ? 'shots' : 'best'));
-    const fill = h('i');
-    const meter = h('div', { class: this.mode === 'level' ? 'meter' : 'meter timer' }, fill);
-    if (this.mode === 'level') {
-      const l = this.game.level!;
-      const tick = h('span', { class: 'tick', style: `left:${(l.stars[0] / l.stars[1]) * 100}%` });
-      meter.append(tick);
+    const level = this.mode === 'level';
+    const score = h('div', { class: 'p-score' }, '0');
+    const title = h('div', { class: 'p-title' }, level ? `Level ${this.levelId}` : 'Arcade');
+    const badgeValue = h('b', null, '');
+    const badge = h('div', { class: 'badge' }, badgeValue, h('small', null, level ? 'Shots' : 'Best'));
+    const fill = h('div', { class: 'fill' });
+    const meter = h('div', { class: level ? 'meter' : 'meter timer' }, fill);
+    const marks: HTMLElement[] = [];
+    if (level) {
+      for (const pct of [STAR2_AT, 100]) {
+        const m = h('div', { class: 'mark', style: `left:${pct}%` }, icon('star'));
+        marks.push(m);
+        meter.append(m);
+      }
+    } else {
+      meter.append(icon('ceiling', 'end-ico'));
     }
-    const pauseBtn = button('❚❚', () => this.pause(), 'btn btn-ghost btn-icon');
-    pauseBtn.setAttribute('aria-label', 'Pause');
-    const hudEl = h('div', { class: 'hud' }, pauseBtn, h('div', { class: 'hud-center' }, title, score), pill);
-    const sub = h('div', { class: 'hud-sub', style: 'top: calc(var(--sat) + 62px)' }, meter);
-    root.append(hudEl, sub);
-    this.hud = { score, title, pill, pillValue, meter, fill };
+    const pauseBtn = iconButton('pause', 'Pause', () => this.pause(), 'c-blue');
+    const el = h('div', { class: 'hud' }, h('div', { class: 'hud-row' }, pauseBtn, h('div', { class: 'plaque' }, title, score), badge), meter);
+    root.append(el);
+    this.hud = { el, score, title, badge, badgeValue, fill, marks };
     this.refreshHud();
 
-    if (this.mode === 'level') {
+    if (level) {
       const l = this.game.level!;
-      this.banner(`Level ${l.id}`, l.press ? `⬇ The ceiling drops every ${l.press} shots!` : `Clear the bubbles in ${l.shots} shots`);
+      const color = THEME_INFO[this.theme].ribbon;
+      if (l.press) this.banner(`Level ${l.id}`, `The ceiling drops every ${l.press} shots!`, 'ceiling', color);
+      else this.banner(`Level ${l.id}`, `Clear the bubbles in ${l.shots} shots`, 'pop', color);
     } else {
-      this.banner('Arcade', 'Rows keep coming. Survive!');
+      this.banner('Arcade', 'Rows keep coming. Survive!', 'bolt', 'c-orange');
     }
   }
 
-  private banner(big: string, small?: string): void {
-    const b = h('div', { class: 'banner' }, big, small ? h('small', null, small) : null);
+  private banner(big: string, small?: string, ico?: IconName, color = 'c-pink'): void {
+    const b = h('div', { class: 'banner' }, ribbon(big, color, true), small ? h('div', { class: 'goal' }, ico ? icon(ico) : null, h('span', null, small)) : null);
     this.root.append(b);
-    setTimeout(() => b.remove(), 1700);
+    setTimeout(() => b.remove(), 2000);
   }
 
   resize(w: number, hgt: number): void {
     const ins = this.app.insets();
-    const top = ins.top + 84;
-    const bottom = ins.bottom + 6;
-    this.view.layout(ins.left + 4, top, w - ins.left - ins.right - 8, hgt - top - bottom);
+    const top = (this.hud?.el.getBoundingClientRect().bottom ?? ins.top + 110) + 12;
+    const bottom = ins.bottom + 8;
+    this.view.layout(ins.left + 6, top, w - ins.left - ins.right - 12, hgt - top - bottom);
   }
 
   // ------------------------------------------------------------------ input
@@ -174,7 +186,7 @@ export class SoloScene implements Scene {
     if (this.mode === 'arcade' && this.game.state === 'playing') {
       const bonus = this.game.refillIfEmpty();
       if (bonus) {
-        this.banner('Board clear!', `+${bonus}`);
+        this.banner('Board clear!', `+${bonus.toLocaleString()} bonus`, 'star', 'c-lime');
         sound.win();
         this.view.pushed();
         this.syncLauncher();
@@ -212,11 +224,12 @@ export class SoloScene implements Scene {
       const diff = this.game.score - this.shownScore;
       this.shownScore += Math.sign(diff) * Math.max(1, Math.ceil(Math.abs(diff) * dt * 8));
       if (Math.abs(this.game.score - this.shownScore) < 2) this.shownScore = this.game.score;
-      this.hud.score.textContent = String(this.shownScore);
+      this.hud.score.textContent = this.shownScore.toLocaleString();
     }
     if (this.mode === 'arcade') {
       this.hud.fill.style.width = `${Math.min(100, this.game.pushProgress * 100)}%`;
-      this.hud.title.textContent = `Arcade · Lv ${this.game.arcadeLevel}`;
+      const t = `Arcade · Lv ${this.game.arcadeLevel}`;
+      if (this.hud.title.textContent !== t) this.hud.title.textContent = t;
     }
     if (!this.ended && this.game.state !== 'playing' && !this.view.busy) {
       this.ended = true;
@@ -234,17 +247,24 @@ export class SoloScene implements Scene {
     const g = this.game;
     if (this.mode === 'level') {
       const left = g.shotsLeft;
-      this.hud.pillValue.textContent = String(left);
-      this.hud.pill.classList.toggle('low', left <= 5);
+      this.hud.badgeValue.textContent = String(left);
+      this.hud.badge.classList.toggle('low', left <= 5);
       const l = g.level!;
-      this.hud.fill.style.width = `${Math.min(100, (g.score / l.stars[1]) * 100)}%`;
+      // Stars sit at fixed spots on the bar; the fill is piecewise so each threshold lines up.
+      const [s2, s3] = l.stars;
+      const pct = g.score < s2 ? (g.score / s2) * STAR2_AT : STAR2_AT + Math.min(1, (g.score - s2) / Math.max(1, s3 - s2)) * (100 - STAR2_AT);
+      this.hud.fill.style.width = `${Math.min(100, pct)}%`;
+      this.hud.marks[0]?.classList.toggle('on', g.score >= l.stars[0]);
+      this.hud.marks[1]?.classList.toggle('on', g.score >= l.stars[1]);
       if (l.press) {
         const n = g.shotsToPress;
-        this.hud.title.textContent = `Level ${l.id} · ⬇ ${n}`;
-        this.hud.title.style.color = n <= 1 ? '#ff9aaa' : '';
+        this.hud.title.replaceChildren(h('span', null, `Level ${l.id}`), icon('ceiling'), h('span', null, String(n)));
+        this.hud.title.classList.toggle('warn', n <= 1);
       }
     } else {
-      this.hud.pillValue.textContent = String(Math.max(stats.arcadeBest, g.score));
+      const best = Math.max(stats.arcadeBest, g.score);
+      this.hud.badgeValue.textContent = best >= 10000 ? `${Math.floor(best / 1000)}k` : String(best);
+      this.hud.badgeValue.classList.toggle('long', String(best).length > 3 && best < 10000);
     }
   }
 
@@ -289,33 +309,30 @@ export class SoloScene implements Scene {
     const g = this.game;
     const stars = g.stars();
     const newBest = this.newBest;
-    const starEl = starsRow(0, 3, 'big-stars');
+    const starEls = [0, 1, 2].map(() => h('div', { class: 'rs' }, icon('star', 'dim'), icon('star', 'lit')));
     const hasNext = this.levelId < LEVEL_COUNT;
+    const line = (label: string, value: string) => h('div', { class: 'score-line' }, h('span', null, label), h('b', null, value));
     const panel = h(
       'div',
-      { class: 'panel dialog pop-in' },
-      h('h2', { class: 'result-title' }, stars === 3 ? 'Perfect!' : 'Level Complete!'),
-      starEl,
-      h('div', { class: 'score-big' }, String(g.score)),
-      newBest ? h('div', null, h('span', { class: 'badge' }, 'NEW BEST')) : null,
+      { class: 'panel titled dialog pop-in' },
+      ribbon(stars === 3 ? 'Perfect!' : 'Level complete!', 'c-lime'),
+      h('div', { class: 'result-stars' }, ...starEls),
+      h('div', { class: 'score-label' }, 'Score'),
+      h('div', { class: 'score-big' }, g.score.toLocaleString()),
+      newBest ? h('div', { class: 'new-best' }, 'NEW BEST') : null,
+      h('div', { class: 'score-lines' }, line('Shots left bonus', `+${g.endBonus.toLocaleString()}`), line('Best combo', `x${g.bestCombo}`)),
       h(
         'div',
-        null,
-        h('div', { class: 'score-line' }, h('span', null, 'Shots left bonus'), h('b', null, `+${g.endBonus}`)),
-        h('div', { class: 'score-line' }, h('span', null, 'Best combo'), h('b', null, `x${g.bestCombo}`)),
+        { class: 'actions' },
+        iconButton('map', 'Levels', () => this.app.go(new LevelSelectScene(this.app)), 'c-cream'),
+        iconButton('restart', 'Play again', () => this.app.go(new SoloScene(this.app, 'level', this.levelId)), 'c-orange'),
+        hasNext ? button([h('span', null, 'Next'), icon('next')], () => this.app.go(new SoloScene(this.app, 'level', this.levelId + 1)), 'btn c-lime') : h('p', { class: 'note' }, 'You beat every level!'),
       ),
-      h(
-        'div',
-        { class: 'row' },
-        button('Levels', () => this.app.go(new LevelSelectScene(this.app)), 'btn btn-ghost'),
-        button('Retry', () => this.app.go(new SoloScene(this.app, 'level', this.levelId)), 'btn btn-sky'),
-      ),
-      hasNext ? button('Next level ▶', () => this.app.go(new SoloScene(this.app, 'level', this.levelId + 1)), 'btn btn-hot') : h('p', null, 'You beat every level! 🎉'),
     );
-    this.showOverlay(panel);
-    [...starEl.children].forEach((el, i) => {
+    this.showOverlay(panel, true);
+    starEls.forEach((el, i) => {
       if (i < stars) {
-        this.later(350 + i * 380, () => {
+        this.later(450 + i * 400, () => {
           el.classList.add('on');
           sound.star(i);
           haptic(12);
@@ -326,15 +343,21 @@ export class SoloScene implements Scene {
 
   private showLevelLost(): void {
     const g = this.game;
-    const reason = g.lostReason === 'shots' ? 'Out of shots!' : 'The bubbles reached the line!';
+    const shots = g.lostReason === 'shots';
     const panel = h(
       'div',
-      { class: 'panel dialog pop-in' },
-      h('h2', { class: 'result-title' }, 'So close!'),
-      h('p', { class: 'muted' }, reason),
-      h('div', { class: 'score-big' }, String(g.score)),
-      h('p', { class: 'small muted' }, `${g.board.countColored()} bubbles left`),
-      h('div', { class: 'row' }, button('Levels', () => this.app.go(new LevelSelectScene(this.app)), 'btn btn-ghost'), button('Try again', () => this.app.go(new SoloScene(this.app, 'level', this.levelId)), 'btn btn-hot')),
+      { class: 'panel titled dialog pop-in' },
+      ribbon(shots ? 'Out of shots!' : 'Too close!', 'c-red'),
+      icon('sad', 'result-face'),
+      h('p', null, shots ? `So close! ${g.board.countColored()} bubbles left.` : 'The bubbles reached the line.'),
+      h('div', { class: 'score-label' }, 'Score'),
+      h('div', { class: 'score-big' }, g.score.toLocaleString()),
+      h(
+        'div',
+        { class: 'actions' },
+        iconButton('map', 'Levels', () => this.app.go(new LevelSelectScene(this.app)), 'c-cream'),
+        button('Try again', () => this.app.go(new SoloScene(this.app, 'level', this.levelId)), 'btn c-orange', 'restart'),
+      ),
     );
     this.showOverlay(panel);
   }
@@ -344,24 +367,31 @@ export class SoloScene implements Scene {
     const record = this.record;
     const panel = h(
       'div',
-      { class: 'panel dialog pop-in' },
-      h('h2', { class: 'result-title' }, 'Game Over'),
-      h('div', { class: 'score-big' }, String(g.score)),
-      record ? h('div', null, h('span', { class: 'badge' }, 'NEW RECORD')) : h('p', { class: 'muted' }, `Best: ${stats.arcadeBest}`),
+      { class: 'panel titled dialog pop-in' },
+      ribbon('Game over', 'c-orange'),
+      record ? icon('trophy', 'result-face') : null,
+      h('div', { class: 'score-label' }, 'Score'),
+      h('div', { class: 'score-big' }, g.score.toLocaleString()),
+      record ? h('div', { class: 'new-best' }, 'NEW RECORD') : h('p', null, `Best: ${stats.arcadeBest.toLocaleString()}`),
       h(
         'div',
         { class: 'stat-grid' },
         h('div', { class: 'stat' }, h('b', null, String(g.arcadeLevel)), h('small', null, 'Level reached')),
         h('div', { class: 'stat' }, h('b', null, `x${g.bestCombo}`), h('small', null, 'Best combo')),
       ),
-      h('div', { class: 'row' }, button('Menu', () => this.app.goHome(), 'btn btn-ghost'), button('Play again', () => this.app.go(new SoloScene(this.app, 'arcade')), 'btn btn-hot')),
+      h(
+        'div',
+        { class: 'actions' },
+        iconButton('home', 'Menu', () => this.app.goHome(), 'c-cream'),
+        button('Play again', () => this.app.go(new SoloScene(this.app, 'arcade')), 'btn c-lime', 'restart'),
+      ),
     );
-    this.showOverlay(panel);
+    this.showOverlay(panel, record);
   }
 
-  private showOverlay(panel: HTMLElement): void {
+  private showOverlay(panel: HTMLElement, rays = false): void {
     this.overlay?.remove();
-    this.overlay = h('div', { class: 'overlay' }, panel);
+    this.overlay = h('div', { class: 'overlay' }, rays ? h('div', { class: 'rays' }) : null, panel);
     this.root.append(this.overlay);
   }
 
@@ -379,6 +409,7 @@ export class SoloScene implements Scene {
         onRestart: () => this.app.go(new SoloScene(this.app, this.mode, this.levelId)),
         onQuit: () => (this.mode === 'level' ? this.app.go(new LevelSelectScene(this.app)) : this.app.goHome()),
         quitLabel: this.mode === 'level' ? 'Levels' : 'Menu',
+        quitIcon: this.mode === 'level' ? 'map' : 'home',
         onSettingsChanged: () => (this.view.aimGuide = settings.aimGuide),
       }),
     );

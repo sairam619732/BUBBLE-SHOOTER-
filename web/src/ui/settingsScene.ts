@@ -1,8 +1,9 @@
 import type { App, Scene } from '../app';
+import { LEVEL_COUNT } from '../core/levels';
 import { appVersion, openUrl } from '../platform/native';
 import { setSymbols } from '../render/boardView';
-import { resetProgress, saveSettings, settings, stats } from '../storage';
-import { button, confirmDialog, h, toast } from './dom';
+import { resetProgress, saveSettings, settings, stats, totalStars } from '../storage';
+import { button, confirmDialog, h, titledPanel, toast, topBar } from './dom';
 import { audioToggles, toggleRow } from './pauseMenu';
 
 export const PRIVACY_URL = 'https://github.com/sairam619732/BUBBLE-SHOOTER-/blob/main/docs/privacy-policy.md';
@@ -15,20 +16,21 @@ export class SettingsScene implements Scene {
 
   mount(root: HTMLElement): void {
     this.root = root;
-    const name = h('input', { class: 'input', maxlength: '14', placeholder: 'Your name', value: settings.name }) as HTMLInputElement;
+    const name = h('input', { class: 'input', id: 'player-name', maxlength: '14', placeholder: 'Your name', value: settings.name }) as HTMLInputElement;
     name.addEventListener('change', () => {
       settings.name = name.value.trim().slice(0, 14);
       saveSettings();
     });
+    const stat = (value: string, label: string) => h('div', { class: 'stat' }, h('b', null, value), h('small', null, label));
     root.append(
       h(
         'div',
         { class: 'screen' },
-        h('div', { class: 'topbar' }, button('←', () => this.app.goHome(), 'btn btn-ghost btn-icon'), h('h2', null, 'Settings')),
-        h(
-          'div',
-          { class: 'panel' },
-          h('div', { class: 'field' }, h('label', null, 'Player name (multiplayer)'), name),
+        topBar('Settings', () => this.app.goHome()),
+        titledPanel('Player', 'c-orange', h('div', { class: 'field' }, h('label', { for: 'player-name' }, 'Name shown in multiplayer'), name)),
+        titledPanel(
+          'Sound & play',
+          'c-blue',
           ...audioToggles(),
           toggleRow(
             'Color-blind symbols',
@@ -38,29 +40,35 @@ export class SettingsScene implements Scene {
               settings.symbols = v;
               setSymbols(v);
             },
+            'shapes',
           ),
         ),
-        h(
-          'div',
-          { class: 'panel' },
-          h('div', { class: 'stat-grid', style: 'margin-top:0' }, h('div', { class: 'stat' }, h('b', null, String(stats.arcadeBest)), h('small', null, 'Arcade best')), h('div', { class: 'stat' }, h('b', null, `${stats.mpWins}/${stats.mpGames}`), h('small', null, 'Versus wins'))),
+        titledPanel(
+          'Records',
+          'c-purple',
           h(
             'div',
-            { class: 'row', style: 'margin-top:14px' },
-            button('Privacy policy', () => openUrl(PRIVACY_URL), 'btn btn-ghost btn-small'),
-            button(
-              'Reset progress',
-              async () => {
-                const yes = await confirmDialog(this.root, 'Reset progress?', 'This clears all stars, unlocked levels and records.', 'Reset', 'Cancel');
-                if (yes) {
-                  resetProgress();
-                  toast('Progress reset');
-                }
-              },
-              'btn btn-ghost btn-small',
+            { class: 'dialog' },
+            h('div', { class: 'stat-grid' }, stat(`${totalStars()}/${LEVEL_COUNT * 3}`, 'Stars'), stat(stats.arcadeBest.toLocaleString(), 'Arcade best'), stat(`${stats.mpWins}/${stats.mpGames}`, 'Versus wins'), stat(String(stats.arcadeBestLevel), 'Arcade level')),
+            h(
+              'div',
+              { class: 'row' },
+              button('Privacy', () => openUrl(PRIVACY_URL), 'btn btn-sm c-cream'),
+              button(
+                'Reset progress',
+                async () => {
+                  const yes = await confirmDialog(this.root, 'Reset progress?', 'This clears all stars, unlocked levels and records.', 'Reset', 'Cancel');
+                  if (yes) {
+                    resetProgress();
+                    toast('Progress reset');
+                    this.app.go(new SettingsScene(this.app));
+                  }
+                },
+                'btn btn-sm c-red',
+              ),
             ),
+            h('p', { class: 'note' }, `Version ${appVersion()}`),
           ),
-          h('p', { class: 'small muted', style: 'text-align:center' }, `Version ${appVersion()}`),
         ),
       ),
     );

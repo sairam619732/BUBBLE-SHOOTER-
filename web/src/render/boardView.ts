@@ -52,6 +52,7 @@ interface Particle {
   size: number;
   color: string;
   ring?: boolean;
+  star?: boolean;
 }
 
 interface Faller {
@@ -84,7 +85,10 @@ interface Incoming {
   t: number;
 }
 
-const FRAME = 6;
+const FRAME = 10;
+const INK = '#1c1442';
+const POD_X = SHOOTER_X - 78;
+const POD_Y = SHOOTER_Y + 14;
 const tmp = { x: 0, y: 0 };
 
 /** Draws one board with its launcher and all the juicy animation. Works in world units. */
@@ -349,6 +353,11 @@ export class BoardView {
       this.particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.5, max: 0.5, size: 2 + Math.random() * 3.5, color });
     }
     this.particles.push({ x, y, vx: 0, vy: 0, life: 0.3, max: 0.3, size: R, color, ring: true });
+    for (let k = 0; k < 2; k++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 60 + Math.random() * 120;
+      this.particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60, life: 0.6, max: 0.6, size: 5 + Math.random() * 4, color: '#fff7c2', star: true });
+    }
   }
 
   private ring(x: number, y: number, color: string, size: number): void {
@@ -524,10 +533,22 @@ export class BoardView {
       ctx.globalAlpha = a;
       if (p.ring) {
         ctx.strokeStyle = p.color;
-        ctx.lineWidth = 3 * a + 0.5;
+        ctx.lineWidth = 4 * a + 0.5;
         ctx.beginPath();
         ctx.arc(p.x, p.y + oy, p.size * (1.4 - a * 0.5), 0, Math.PI * 2);
         ctx.stroke();
+      } else if (p.star) {
+        const z = p.size * (0.5 + a * 0.7);
+        const px = p.x;
+        const py = p.y + oy;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.moveTo(px, py - z);
+        ctx.quadraticCurveTo(px, py, px + z, py);
+        ctx.quadraticCurveTo(px, py, px, py + z);
+        ctx.quadraticCurveTo(px, py, px - z, py);
+        ctx.quadraticCurveTo(px, py, px, py - z);
+        ctx.fill();
       } else {
         ctx.fillStyle = p.color;
         ctx.beginPath();
@@ -543,9 +564,11 @@ export class BoardView {
       const a = Math.min(1, tx.life / (tx.max * 0.4));
       const pop = 1 + Math.max(0, tx.life - tx.max + 0.15) * 3;
       ctx.globalAlpha = a;
-      ctx.font = `700 ${Math.round(tx.size * pop)}px Fredoka, system-ui, sans-serif`;
-      ctx.lineWidth = 4;
-      ctx.strokeStyle = 'rgba(30,10,60,0.75)';
+      ctx.font = `400 ${Math.round(tx.size * pop * 1.08)}px 'Lilita One', 'Nunito', system-ui, sans-serif`;
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = 7;
+      ctx.strokeStyle = INK;
+      ctx.strokeText(tx.text, tx.x, tx.y + 2.5);
       ctx.strokeText(tx.text, tx.x, tx.y);
       ctx.fillStyle = tx.color;
       ctx.fillText(tx.text, tx.x, tx.y);
@@ -559,12 +582,12 @@ export class BoardView {
     const top = -FRAME;
     const w = BOARD_W + FRAME * 2;
     const g = ctx.createLinearGradient(0, top, 0, bottom);
-    g.addColorStop(0, '#4a5163');
-    g.addColorStop(0.7, '#8e98ad');
-    g.addColorStop(1, '#c4ccda');
+    g.addColorStop(0, '#4c5470');
+    g.addColorStop(0.7, '#9aa3bd');
+    g.addColorStop(1, '#cfd6e6');
     ctx.fillStyle = g;
     ctx.fillRect(-FRAME, top, w, bottom - top);
-    ctx.strokeStyle = 'rgba(25,30,45,0.35)';
+    ctx.strokeStyle = 'rgba(28,20,66,0.35)';
     ctx.lineWidth = 1.5;
     for (let y = bottom - ROW_H; y > top + 4; y -= ROW_H) {
       ctx.beginPath();
@@ -575,53 +598,138 @@ export class BoardView {
     // hazard stripe along the bottom edge
     ctx.save();
     ctx.beginPath();
-    ctx.rect(-FRAME, bottom - 7, w, 7);
+    ctx.rect(-FRAME, bottom - 8, w, 8);
     ctx.clip();
     ctx.fillStyle = '#ffcc33';
-    ctx.fillRect(-FRAME, bottom - 7, w, 7);
-    ctx.fillStyle = '#2a2a33';
+    ctx.fillRect(-FRAME, bottom - 8, w, 8);
+    ctx.fillStyle = INK;
     for (let x = -FRAME - 12; x < BOARD_W + FRAME; x += 16) {
       ctx.beginPath();
       ctx.moveTo(x, bottom);
       ctx.lineTo(x + 7, bottom);
-      ctx.lineTo(x + 14, bottom - 7);
-      ctx.lineTo(x + 7, bottom - 7);
+      ctx.lineTo(x + 15, bottom - 8);
+      ctx.lineTo(x + 8, bottom - 8);
       ctx.closePath();
       ctx.fill();
     }
     ctx.restore();
-    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-FRAME, bottom);
+    ctx.lineTo(BOARD_W + FRAME, bottom);
+    ctx.stroke();
     for (let x = D / 2; x < BOARD_W; x += D) {
       ctx.beginPath();
-      ctx.arc(x, bottom - 13, 2.2, 0, Math.PI * 2);
+      ctx.arc(x, bottom - 15, 2.6, 0, Math.PI * 2);
+      ctx.fillStyle = '#eef1f8';
       ctx.fill();
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
     }
   }
 
+  /** Gold-rimmed tray with a dark glass well behind the bubbles. */
   private drawFrame(ctx: CanvasRenderingContext2D): void {
     const w = BOARD_W;
-    // panel
-    ctx.fillStyle = 'rgba(12, 8, 40, 0.28)';
-    roundRect(ctx, -FRAME, -FRAME, w + FRAME * 2, WORLD_H + FRAME, 14);
+    const x0 = -FRAME;
+    const y0 = -FRAME;
+    const ww = w + FRAME * 2;
+    const hh = WORLD_H + FRAME;
+    // drop shadow + ink outline + rim
+    ctx.fillStyle = 'rgba(8,4,30,0.35)';
+    roundRect(ctx, x0, y0 + 7, ww, hh, 24);
     ctx.fill();
-    // ceiling bar
-    const g = ctx.createLinearGradient(0, -FRAME, 0, 4);
-    g.addColorStop(0, 'rgba(255,255,255,0.45)');
-    g.addColorStop(1, 'rgba(255,255,255,0.05)');
-    ctx.fillStyle = g;
-    roundRect(ctx, -FRAME, -FRAME, w + FRAME * 2, FRAME + 3, 6);
+    ctx.fillStyle = INK;
+    roundRect(ctx, x0 - 1.5, y0 - 1.5, ww + 3, hh + 3, 25);
     ctx.fill();
+    const rim = ctx.createLinearGradient(0, y0, 0, y0 + hh);
+    rim.addColorStop(0, '#fff3c9');
+    rim.addColorStop(0.08, '#ffd25e');
+    rim.addColorStop(0.5, '#f5b33a');
+    rim.addColorStop(1, '#d98a1c');
+    ctx.fillStyle = rim;
+    roundRect(ctx, x0 + 1.5, y0 + 1.5, ww - 3, hh - 3, 22);
+    ctx.fill();
+    // rim shine
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = 2;
+    roundRect(ctx, x0 + 4, y0 + 4, ww - 8, hh - 8, 19);
+    ctx.stroke();
+    // well
+    const wellH = WORLD_H - FRAME * 0.6;
+    const well = ctx.createLinearGradient(0, 0, 0, wellH);
+    well.addColorStop(0, '#2a2470');
+    well.addColorStop(0.55, '#1d1858');
+    well.addColorStop(1, '#151146');
+    ctx.fillStyle = well;
+    roundRect(ctx, -1, -1, w + 2, wellH + 1, 13);
+    ctx.fill();
+    ctx.save();
+    ctx.clip();
+    // soft glass reflection and a faint bubble pattern
+    ctx.fillStyle = 'rgba(255,255,255,0.045)';
+    ctx.beginPath();
+    ctx.moveTo(-1, wellH * 0.16);
+    ctx.lineTo(w * 0.42, -1);
+    ctx.lineTo(w * 0.62, -1);
+    ctx.lineTo(-1, wellH * 0.3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.035)';
+    for (let yy = R; yy < wellH; yy += D * 1.5) {
+      for (let xx = (yy / (D * 1.5)) % 2 < 1 ? R : D; xx < w; xx += D * 2) {
+        ctx.beginPath();
+        ctx.arc(xx, yy, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+    roundRect(ctx, -1, -1, w + 2, wellH + 1, 13);
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    // inner top shadow under the ceiling
+    const sh = ctx.createLinearGradient(0, 0, 0, 14);
+    sh.addColorStop(0, 'rgba(0,0,0,0.35)');
+    sh.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = sh;
+    ctx.fillRect(1, 1, w - 2, 14);
+    // bolts on the top rim
+    for (const bx of [-FRAME / 2, w + FRAME / 2]) {
+      for (const by of [-FRAME / 2, wellH + (WORLD_H - wellH) / 2 - 1]) {
+        ctx.beginPath();
+        ctx.arc(bx, by, 2.4, 0, Math.PI * 2);
+        ctx.fillStyle = '#fff6d8';
+        ctx.fill();
+        ctx.strokeStyle = INK;
+        ctx.lineWidth = 1.3;
+        ctx.stroke();
+      }
+    }
+    // launcher zone tint
+    ctx.fillStyle = 'rgba(255,255,255,0.045)';
+    ctx.fillRect(1, DEADLINE_Y, w - 2, wellH - DEADLINE_Y - 2);
     // deadline
     const danger = this.board.lowestRow() >= DEADLINE_ROW - 2;
     const pulse = danger ? 0.5 + 0.5 * Math.sin(this.t * 10) : 0;
-    ctx.strokeStyle = danger ? `rgba(255,80,100,${0.55 + pulse * 0.4})` : 'rgba(255,255,255,0.28)';
-    ctx.lineWidth = danger ? 3 : 2;
-    ctx.setLineDash([8, 8]);
+    if (danger) {
+      const dg = ctx.createLinearGradient(0, DEADLINE_Y - 26, 0, DEADLINE_Y);
+      dg.addColorStop(0, 'rgba(255,60,80,0)');
+      dg.addColorStop(1, `rgba(255,60,80,${0.18 + pulse * 0.2})`);
+      ctx.fillStyle = dg;
+      ctx.fillRect(1, DEADLINE_Y - 26, w - 2, 26);
+    }
+    ctx.strokeStyle = danger ? `rgba(255,90,110,${0.7 + pulse * 0.3})` : 'rgba(255,255,255,0.34)';
+    ctx.lineWidth = danger ? 3.5 : 2.5;
+    ctx.lineCap = 'round';
+    ctx.setLineDash([9, 9]);
     ctx.beginPath();
-    ctx.moveTo(0, DEADLINE_Y);
-    ctx.lineTo(w, DEADLINE_Y);
+    ctx.moveTo(8, DEADLINE_Y);
+    ctx.lineTo(w - 8, DEADLINE_Y);
     ctx.stroke();
     ctx.setLineDash([]);
+    ctx.lineCap = 'butt';
   }
 
   private drawAim(ctx: CanvasRenderingContext2D): void {
@@ -634,100 +742,154 @@ export class BoardView {
     const color = pieceTint(this.cur);
     if (this.aimGuide) {
       const total = polylineLength(tr.points);
-      const step = 15;
-      const offset = (this.t * 60) % step;
-      ctx.fillStyle = color;
-      for (let d = offset + 28; d < total - 4; d += step) {
+      const step = 17;
+      const offset = (this.t * 70) % step;
+      ctx.lineWidth = 1.8;
+      ctx.strokeStyle = INK;
+      for (let d = offset + 30; d < total - 6; d += step) {
         pointAlong(tr.points, d, tmp);
-        const fade = 1 - d / (total + 60);
-        ctx.globalAlpha = 0.35 + fade * 0.6;
+        const fade = 1 - d / (total + 80);
+        ctx.globalAlpha = 0.45 + fade * 0.55;
         ctx.beginPath();
-        ctx.arc(tmp.x, tmp.y, 3.2, 0, Math.PI * 2);
+        ctx.arc(tmp.x, tmp.y, 3 + fade * 1.6, 0, Math.PI * 2);
+        ctx.fillStyle = color;
         ctx.fill();
+        ctx.stroke();
       }
       ctx.globalAlpha = 1;
-      // ghost at landing cell
+      // ghost bubble where the shot will land
       const gx = this.board.cellX(tr.r, tr.c);
       const gy = this.board.cellY(tr.r);
-      ctx.globalAlpha = 0.45 + 0.15 * Math.sin(this.t * 8);
+      ctx.globalAlpha = 0.42 + 0.12 * Math.sin(this.t * 8);
+      ctx.drawImage(this.sprites.get(this.cur), gx - R, gy - R, D, D);
+      ctx.globalAlpha = 0.9;
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 2.5;
       ctx.setLineDash([5, 4]);
       ctx.beginPath();
-      ctx.arc(gx, gy, R - 2, 0, Math.PI * 2);
+      ctx.arc(gx, gy, R + 1, 0, Math.PI * 2);
       ctx.stroke();
       ctx.setLineDash([]);
       ctx.globalAlpha = 1;
     } else {
       // short pointer only
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 3;
-      ctx.globalAlpha = 0.7;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 7;
       ctx.beginPath();
-      ctx.moveTo(SHOOTER_X, SHOOTER_Y);
-      ctx.lineTo(SHOOTER_X + Math.cos(this.aimAngle) * 90, SHOOTER_Y - Math.sin(this.aimAngle) * 90);
+      ctx.moveTo(SHOOTER_X + Math.cos(this.aimAngle) * 40, SHOOTER_Y - Math.sin(this.aimAngle) * 40);
+      ctx.lineTo(SHOOTER_X + Math.cos(this.aimAngle) * 100, SHOOTER_Y - Math.sin(this.aimAngle) * 100);
       ctx.stroke();
-      ctx.globalAlpha = 1;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 3.5;
+      ctx.stroke();
+      ctx.lineCap = 'butt';
     }
   }
 
+  /** Cannon with the loaded bubble, plus the "next" pod and swap arrow. */
   private drawLauncher(ctx: CanvasRenderingContext2D): void {
     const x = SHOOTER_X;
     const y = SHOOTER_Y;
     const a = this.aimAngle ?? Math.PI / 2;
-    // base
-    const base = ctx.createLinearGradient(0, y - 10, 0, y + 40);
-    base.addColorStop(0, '#ffffff');
-    base.addColorStop(1, '#b9a6ff');
-    ctx.fillStyle = 'rgba(20,10,60,0.35)';
+    ctx.lineJoin = 'round';
+    // platform
+    ctx.fillStyle = 'rgba(8,4,30,0.35)';
     ctx.beginPath();
-    ctx.ellipse(x, y + 30, 46, 10, 0, 0, Math.PI * 2);
+    ctx.ellipse(x, y + 30, 60, 12, 0, 0, Math.PI * 2);
     ctx.fill();
     // barrel
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(-a + Math.PI / 2);
-    const bar = ctx.createLinearGradient(-12, 0, 12, 0);
-    bar.addColorStop(0, '#6c4cf5');
-    bar.addColorStop(0.5, '#a48bff');
-    bar.addColorStop(1, '#5236d6');
+    const bar = ctx.createLinearGradient(-13, 0, 13, 0);
+    bar.addColorStop(0, '#3b2f9e');
+    bar.addColorStop(0.45, '#8f84ff');
+    bar.addColorStop(1, '#2e2484');
     ctx.fillStyle = bar;
-    roundRect(ctx, -11, -R - 26, 22, 34, 7);
+    roundRect(ctx, -13, -R - 36, 26, 44, 9);
+    ctx.fill();
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    const band = ctx.createLinearGradient(0, -R - 38, 0, -R - 26);
+    band.addColorStop(0, '#fff0a8');
+    band.addColorStop(1, '#f0a020');
+    ctx.fillStyle = band;
+    roundRect(ctx, -15.5, -R - 39, 31, 12, 5);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    roundRect(ctx, -7, -R - 24, 4, 24, 2);
     ctx.fill();
     ctx.restore();
     // ring
-    ctx.fillStyle = base;
     ctx.beginPath();
-    ctx.arc(x, y, R + 7, 0, Math.PI * 2);
+    ctx.arc(x, y, R + 9, 0, Math.PI * 2);
+    ctx.fillStyle = INK;
     ctx.fill();
-    ctx.strokeStyle = 'rgba(80,50,180,0.6)';
-    ctx.lineWidth = 2;
+    const ring = ctx.createLinearGradient(0, y - R - 8, 0, y + R + 8);
+    ring.addColorStop(0, '#fff3c9');
+    ring.addColorStop(0.5, '#ffc93c');
+    ring.addColorStop(1, '#d98a1c');
+    ctx.beginPath();
+    ctx.arc(x, y, R + 6.5, 0, Math.PI * 2);
+    ctx.fillStyle = ring;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x, y, R + 1.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#251a5e';
+    ctx.fill();
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 2.5;
     ctx.stroke();
     if (this.cur && !this.dimmed) ctx.drawImage(this.sprites.get(this.cur), x - R, y - R, D, D);
 
-    // next bubble + swap hint
-    const nx = x - 72;
-    const ny = y + 12;
-    ctx.fillStyle = 'rgba(255,255,255,0.22)';
+    // next bubble pod
+    const pr = R * 0.74 + 6;
     ctx.beginPath();
-    ctx.arc(nx, ny, R * 0.78 + 5, 0, Math.PI * 2);
+    ctx.arc(POD_X, POD_Y, pr + 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = INK;
     ctx.fill();
-    if (this.nxt && !this.dimmed) ctx.drawImage(this.sprites.get(this.nxt), nx - R * 0.78, ny - R * 0.78, D * 0.78, D * 0.78);
-    ctx.strokeStyle = 'rgba(255,255,255,0.75)';
-    ctx.lineWidth = 2.2;
     ctx.beginPath();
-    ctx.arc(x - 36, y + 4, 9, Math.PI * 1.15, Math.PI * 1.95);
+    ctx.arc(POD_X, POD_Y, pr, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff3d6';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(POD_X, POD_Y, pr - 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#251a5e';
+    ctx.fill();
+    if (this.nxt && !this.dimmed) ctx.drawImage(this.sprites.get(this.nxt), POD_X - R * 0.74, POD_Y - R * 0.74, D * 0.74, D * 0.74);
+    // swap arrow (ink under white)
+    const arc = () => {
+      ctx.beginPath();
+      ctx.arc(x - 40, y + 6, 11, Math.PI * 1.1, Math.PI * 1.9);
+    };
+    ctx.lineCap = 'round';
+    arc();
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 6;
+    ctx.stroke();
+    arc();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2.8;
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(x - 29, y - 4);
-    ctx.lineTo(x - 27, y + 3);
-    ctx.lineTo(x - 34, y + 1);
+    ctx.moveTo(x - 33, y - 6);
+    ctx.lineTo(x - 30, y + 3);
+    ctx.lineTo(x - 39, y + 1);
+    ctx.closePath();
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 2;
     ctx.stroke();
+    ctx.lineCap = 'butt';
   }
 
   /** World-space hit test for the swap control (launcher + next bubble). */
   hitsSwap(wx: number, wy: number): boolean {
-    return Math.hypot(wx - SHOOTER_X, wy - SHOOTER_Y) < R + 12 || Math.hypot(wx - (SHOOTER_X - 72), wy - (SHOOTER_Y + 12)) < R + 10;
+    return Math.hypot(wx - SHOOTER_X, wy - SHOOTER_Y) < R + 12 || Math.hypot(wx - POD_X, wy - POD_Y) < R + 12;
   }
 }
 

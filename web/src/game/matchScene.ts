@@ -6,7 +6,8 @@ import type { ClientEvent } from '../net/client';
 import { keepScreenOn } from '../platform/native';
 import { BoardView } from '../render/boardView';
 import { saveStats, settings, stats } from '../storage';
-import { button, confirmDialog, h, haptic, toast } from '../ui/dom';
+import { button, confirmDialog, h, haptic, iconButton, ribbon, toast } from '../ui/dom';
+import { icon } from '../ui/icons';
 import { LobbyScene, avatarColor } from '../ui/lobby';
 import { MultiplayerScene } from '../ui/mpMenu';
 import { MpSession, setSession } from './mpSession';
@@ -28,6 +29,7 @@ export class MatchScene implements Scene {
   private aliveEl!: HTMLElement;
   private fill!: HTMLElement;
   private labels!: HTMLElement;
+  private hudEl!: HTMLElement;
   private overlay: HTMLElement | null = null;
   private aiming = false;
   private swapTouch = false;
@@ -64,20 +66,25 @@ export class MatchScene implements Scene {
   mount(root: HTMLElement): void {
     this.root = root;
     keepScreenOn(true);
-    this.scoreEl = h('div', { class: 'hud-score' }, '0');
+    this.scoreEl = h('div', { class: 'p-score' }, '0');
     this.aliveEl = h('b', null, '');
-    this.fill = h('i');
-    const leave = button('✕', () => this.confirmLeave(), 'btn btn-ghost btn-icon');
-    root.append(
-      h('div', { class: 'hud' }, leave, h('div', { class: 'hud-center' }, h('div', { class: 'hud-title' }, 'Versus'), this.scoreEl), h('div', { class: 'hud-pill' }, this.aliveEl, h('small', null, 'alive'))),
+    this.fill = h('div', { class: 'fill' });
+    const leave = iconButton('close', 'Leave match', () => this.confirmLeave(), 'c-red');
+    this.hudEl = h(
+      'div',
+      { class: 'hud' },
+      h('div', { class: 'hud-row' }, leave, h('div', { class: 'plaque' }, h('div', { class: 'p-title' }, 'Versus'), this.scoreEl), h('div', { class: 'badge' }, this.aliveEl, h('small', null, 'Alive'))),
+      h('div', { class: 'meter timer' }, this.fill, icon('ceiling', 'end-ico')),
     );
+    root.append(this.hudEl);
     this.labels = h('div', { class: 'mini-labels' });
     for (const m of this.minis) {
       const p = this.s.client.players.find((x) => x.id === m.id)!;
-      m.label = h('div', { class: 'mini-label' }, h('span', { style: `color:${avatarColor(p.id)}` }, '● '), p.name, h('br'), m.status);
+      m.status = h('span', { class: 'sc' });
+      m.label = h('div', { class: 'mini-label' }, h('span', { class: 'dot', style: `background:${avatarColor(p.id)}` }), h('span', { class: 'nm' }, p.name), m.status);
       this.labels.append(m.label);
     }
-    root.append(this.labels, h('div', { class: 'hud-sub', style: 'top: calc(var(--sat) + 62px)' }, h('div', { class: 'meter timer' }, this.fill)));
+    root.append(this.labels);
     this.refresh();
     this.s.client.onEvent = (e) => this.onEvent(e);
   }
@@ -87,7 +94,7 @@ export class MatchScene implements Scene {
     const show = () => {
       if (this.destroyed) return;
       if (!this.root) return setTimeout(show, 30);
-      const el = h('div', { class: 'countdown' }, h('span', null, k > 0 ? String(k) : 'GO!'));
+      const el = h('div', { class: 'countdown' }, h('span', { class: k > 0 ? '' : 'go' }, k > 0 ? String(k) : 'GO!'));
       this.root.append(el);
       sound.countdown(k <= 0);
       setTimeout(() => el.remove(), 950);
@@ -99,11 +106,11 @@ export class MatchScene implements Scene {
 
   resize(w: number, hgt: number): void {
     const ins = this.app.insets();
-    const top = ins.top + 84;
+    const top = (this.hudEl?.getBoundingClientRect().bottom ?? ins.top + 110) + 10;
     const n = this.minis.length;
-    const stripH = n ? Math.min(hgt * 0.2, 170) : 0;
-    const labelH = 30;
-    const gap = 8;
+    const stripH = n ? Math.min(hgt * 0.19, 170) : 0;
+    const labelH = 26;
+    const gap = 10;
     const availW = w - ins.left - ins.right - 16;
     const miniW = n ? Math.min(availW / n - gap, 160) : 0;
     const total = n * miniW + (n - 1) * gap;
@@ -111,12 +118,12 @@ export class MatchScene implements Scene {
     this.minis.forEach((m) => {
       m.view.layout(x, top, miniW, stripH - labelH, true);
       m.label.style.left = `${x + miniW / 2}px`;
-      m.label.style.top = `${top + stripH - labelH + 2}px`;
-      m.label.style.maxWidth = `${miniW}px`;
+      m.label.style.top = `${top + stripH - labelH + 4}px`;
+      m.label.style.maxWidth = `${miniW + 8}px`;
       x += miniW + gap;
     });
-    const boardTop = top + stripH + (n ? 6 : 0);
-    this.view.layout(ins.left + 4, boardTop, w - ins.left - ins.right - 8, hgt - boardTop - ins.bottom - 6);
+    const boardTop = top + stripH + (n ? 10 : 0);
+    this.view.layout(ins.left + 6, boardTop, w - ins.left - ins.right - 12, hgt - boardTop - ins.bottom - 8);
   }
 
   // ---------------------------------------------------------------- network events
@@ -245,7 +252,7 @@ export class MatchScene implements Scene {
   private refresh(): void {
     const c = this.s.client;
     const me = c.me;
-    if (me) this.scoreEl.textContent = String(me.score);
+    if (me) this.scoreEl.textContent = me.score.toLocaleString();
     let alive = 0;
     for (const rb of c.boards.values()) if (rb.alive) alive++;
     this.aliveEl.textContent = `${alive}/${c.boards.size}`;
@@ -253,7 +260,7 @@ export class MatchScene implements Scene {
       const rb = c.boards.get(m.id);
       if (!rb) continue;
       const p = c.players.find((x) => x.id === m.id);
-      m.status.textContent = rb.alive ? String(rb.score) : p?.left ? 'left' : `OUT #${rb.rank}`;
+      m.status.textContent = rb.alive ? rb.score.toLocaleString() : p?.left ? 'left' : `OUT #${rb.rank}`;
       m.label.classList.toggle('out', !rb.alive);
     }
   }
@@ -364,25 +371,32 @@ export class MatchScene implements Scene {
     const rows = ranking.map((id, i) => {
       const p = c.players.find((x) => x.id === id);
       const rb = c.boards.get(id);
+      const name = p?.name ?? `Player ${id}`;
       return h(
         'div',
         { class: `item ${i === 0 ? 'rank-1' : ''}` },
-        h('div', { class: 'avatar', style: `background:${avatarColor(id)}` }, i === 0 ? '👑' : String(i + 1)),
-        h('div', { class: 'grow' }, h('div', { class: 'name' }, (p?.name ?? `Player ${id}`) + (id === c.myId ? ' (you)' : '')), h('div', { class: 'small muted' }, `${rb?.score ?? 0} pts`)),
+        i === 0 ? icon('crown', 'rank-num') : h('div', { class: 'rank-num' }, String(i + 1)),
+        h('div', { class: 'avatar', style: `--av:${avatarColor(id)}` }, p?.cpu ? icon('robot') : name.slice(0, 1).toUpperCase()),
+        h('div', { class: 'grow' }, h('div', { class: 'name' }, name + (id === c.myId ? ' (you)' : '')), h('div', { class: 'meta' }, `${(rb?.score ?? 0).toLocaleString()} points`)),
       );
     });
     const actions = this.s.isHost
       ? h(
           'div',
-          { class: 'row' },
-          button('Lobby', () => this.s.server!.backToLobby(), 'btn btn-ghost'),
+          { class: 'actions' },
+          button('Lobby', () => this.s.server!.backToLobby(), 'btn c-cream', 'back'),
           button('Rematch', () => {
             if (!this.s.server!.start()) toast('Not enough players for a rematch');
-          }, 'btn btn-hot'),
+          }, 'btn c-lime', 'restart'),
         )
-      : h('div', null, h('p', { class: 'muted' }, 'Waiting for the host…'), button('Leave', () => this.leave(), 'btn btn-ghost'));
+      : h('div', { class: 'dialog', style: 'width:100%' }, h('p', { class: 'note' }, 'Waiting for the host to start a rematch…'), button('Leave', () => this.leave(), 'btn btn-wide c-cream', 'close'));
     this.overlay?.remove();
-    this.overlay = h('div', { class: 'overlay' }, h('div', { class: 'panel dialog pop-in' }, h('h2', { class: 'result-title' }, won ? 'You win! 🏆' : 'Match over'), h('div', { class: 'list' }, ...rows), actions));
+    this.overlay = h(
+      'div',
+      { class: 'overlay' },
+      won ? h('div', { class: 'rays' }) : null,
+      h('div', { class: 'panel titled dialog pop-in' }, ribbon(won ? 'You win!' : 'Match over', won ? 'c-lime' : 'c-purple'), won ? icon('trophy', 'result-face') : null, h('div', { class: 'list' }, ...rows), actions),
+    );
     const overlay = this.overlay;
     setTimeout(() => {
       if (!this.destroyed && this.overlay === overlay) this.root.append(overlay);

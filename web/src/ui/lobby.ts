@@ -2,7 +2,8 @@ import type { App, Scene } from '../app';
 import { MatchScene } from '../game/matchScene';
 import { MpSession, setSession } from '../game/mpSession';
 import { CpuLevel, MAX_PLAYERS } from '../net/protocol';
-import { button, h, toast } from './dom';
+import { button, h, iconButton, titledPanel, toast, topBar } from './dom';
+import { icon } from './icons';
 import { MultiplayerScene } from './mpMenu';
 
 export const AVATAR_COLORS = ['#ff4757', '#22d3ee', '#ffc93c', '#2ed573', '#a55eea', '#3d6bff'];
@@ -31,18 +32,15 @@ export class LobbyScene implements Scene {
 
     if (this.s.role === 'host') {
       panels.push(
-        h(
-          'div',
-          { class: 'panel', style: 'text-align:center' },
-          h('div', { class: 'small muted' }, 'Friends can find this room under “Games nearby”, or join with:'),
-          ...this.s.addresses.slice(0, 3).map((a) => h('div', { class: 'addr' }, this.s.port ? `${a}` : a)),
-          h('div', { class: 'small muted' }, this.s.port ? `Port ${this.s.port} · same Wi-Fi or this phone's hotspot` : ''),
+        titledPanel(
+          'Your room',
+          'c-teal',
+          h('div', { class: 'dialog' }, h('p', { class: 'note' }, 'Friends on the same Wi-Fi see this room under “Games nearby”. They can also join with:'), ...this.s.addresses.slice(0, 3).map((a) => h('div', { class: 'addr' }, a)), h('p', { class: 'note' }, this.s.port ? `Port ${this.s.port} · same Wi-Fi or this phone's hotspot` : 'Browser test mode: join from another tab.')),
         ),
       );
     }
 
-    const playersPanel = h('div', { class: 'panel' }, h('div', { style: 'display:flex;justify-content:space-between;align-items:center;margin-bottom:10px' }, h('h3', null, 'Players'), h('span', { class: 'small muted', id: 'count' }, '')), this.list);
-    panels.push(playersPanel);
+    panels.push(titledPanel('Players', 'c-pink', h('div', { class: 'panel-head' }, h('span', { class: 'note' }, 'Last one standing wins'), h('span', { class: 'count', id: 'count' }, '')), this.list));
 
     if (isHost) {
       const seg = (options: [string, string][], current: string, pick: (v: string) => void) => {
@@ -67,28 +65,25 @@ export class LobbyScene implements Scene {
         String(this.s.server!.settings.colors),
         (v) => this.s.server!.setColors(Number(v)),
       );
-      this.startBtn = button('▶  Start match', () => this.start(), 'btn btn-hot');
+      this.startBtn = button('Start match', () => this.start(), 'btn btn-wide c-lime', 'play');
       panels.push(
-        h(
-          'div',
-          { class: 'panel', style: 'display:flex;flex-direction:column;gap:12px' },
-          h('div', { style: 'display:flex;gap:10px;align-items:center' }, seg([['easy', 'Easy'], ['normal', 'Normal'], ['hard', 'Hard']], this.cpuLevel, (v) => (this.cpuLevel = v as CpuLevel)), button('+ CPU', () => this.addCpu(), 'btn btn-sky btn-small')),
-          this.colorsSeg,
-          this.startBtn,
+        titledPanel(
+          'Match setup',
+          'c-orange',
+          h(
+            'div',
+            { class: 'dialog' },
+            h('div', { class: 'ctrl-row', style: 'width:100%' }, icon('robot', 't-ico'), seg([['easy', 'Easy'], ['normal', 'Normal'], ['hard', 'Hard']], this.cpuLevel, (v) => (this.cpuLevel = v as CpuLevel)), button('CPU', () => this.addCpu(), 'btn btn-sm c-blue', 'plus')),
+            h('div', { class: 'ctrl-row', style: 'width:100%' }, icon('palette', 't-ico'), this.colorsSeg),
+            this.startBtn,
+          ),
         ),
       );
     } else {
-      panels.push(h('div', { class: 'panel', style: 'text-align:center' }, h('span', { class: 'spinner' }), h('p', { class: 'muted' }, 'Waiting for the host to start the match…')));
+      panels.push(h('div', { class: 'panel dialog' }, h('span', { class: 'spinner' }), h('p', { class: 'note' }, 'Waiting for the host to start the match…')));
     }
 
-    root.append(
-      h(
-        'div',
-        { class: 'screen' },
-        h('div', { class: 'topbar' }, button('←', () => this.leave(), 'btn btn-ghost btn-icon'), h('h2', null, this.s.role === 'offline' ? 'Vs CPU' : c.room || 'Lobby')),
-        ...panels,
-      ),
-    );
+    root.append(h('div', { class: 'screen' }, topBar(this.s.role === 'offline' ? 'Vs CPU' : c.room || 'Lobby', () => this.leave()), ...panels));
 
     c.onEvent = (e) => {
       if (e.type === 'lobby') this.render();
@@ -112,13 +107,19 @@ export class LobbyScene implements Scene {
         const tags: HTMLElement[] = [];
         if (p.host) tags.push(h('span', { class: 'tag host' }, 'Host'));
         if (p.cpu) tags.push(h('span', { class: 'tag' }, 'CPU'));
-        if (p.id === c.myId) tags.push(h('span', { class: 'tag' }, 'You'));
-        const kick = this.s.isHost && !p.host ? button('✕', () => this.s.server!.kick(p.id), 'btn btn-ghost btn-icon btn-small') : null;
-        return h('div', { class: 'item' }, h('div', { class: 'avatar', style: `background:${avatarColor(p.id)}` }, p.cpu ? '🤖' : p.name.slice(0, 1).toUpperCase()), h('div', { class: 'grow' }, h('div', { class: 'name' }, p.name), h('div', { style: 'display:flex;gap:6px;margin-top:3px' }, ...tags)), kick);
+        if (p.id === c.myId) tags.push(h('span', { class: 'tag you' }, 'You'));
+        const kick = this.s.isHost && !p.host ? iconButton('close', `Remove ${p.name}`, () => this.s.server!.kick(p.id), 'c-red', 'btn-sm') : null;
+        return h(
+          'div',
+          { class: 'item' },
+          h('div', { class: 'avatar', style: `--av:${avatarColor(p.id)}` }, p.cpu ? icon('robot') : p.name.slice(0, 1).toUpperCase()),
+          h('div', { class: 'grow' }, h('div', { class: 'name' }, p.name), h('div', { class: 'tags' }, ...tags)),
+          kick,
+        );
       }),
     );
     for (let i = players.length; i < MAX_PLAYERS; i++) {
-      this.list.append(h('div', { class: 'item', style: 'opacity:0.45' }, h('div', { class: 'avatar', style: 'background:rgba(255,255,255,0.15)' }, '+'), h('div', { class: 'grow small muted' }, this.s.role === 'offline' ? 'Add a CPU player' : 'Open slot')));
+      this.list.append(h('div', { class: 'item open-slot' }, h('div', { class: 'avatar empty' }, '+'), h('div', { class: 'grow' }, h('div', { class: 'meta' }, this.s.role === 'offline' ? 'Add a CPU player' : 'Open slot'))));
     }
     if (this.startBtn) this.startBtn.disabled = !(this.s.server?.canStart() ?? false);
   }

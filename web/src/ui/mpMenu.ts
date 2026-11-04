@@ -4,7 +4,8 @@ import { GAME_PORT, PROTOCOL_VERSION, RoomAd } from '../net/protocol';
 import { createJoinNet } from '../net/transports';
 import { isAndroidApp } from '../platform/native';
 import { saveSettings, settings } from '../storage';
-import { button, h, toast } from './dom';
+import { button, h, titledPanel, toast, topBar } from './dom';
+import { icon } from './icons';
 import { LobbyScene } from './lobby';
 
 export function playerName(): string {
@@ -32,32 +33,30 @@ export class MultiplayerScene implements Scene {
       settings.name = name.value.trim().slice(0, 14) || playerName();
       saveSettings();
     });
-    const addr = h('input', { class: 'input', placeholder: isAndroidApp ? 'e.g. 192.168.1.23' : 'host id (browser test mode)', inputmode: 'decimal', autocomplete: 'off' }) as HTMLInputElement;
+    const addr = h('input', { class: 'input', placeholder: isAndroidApp ? 'e.g. 192.168.1.23' : 'Host id', inputmode: 'decimal', autocomplete: 'off' }) as HTMLInputElement;
     this.list = h('div', { class: 'list' });
 
     root.append(
       h(
         'div',
         { class: 'screen' },
-        h('div', { class: 'topbar' }, button('←', () => this.app.goHome(), 'btn btn-ghost btn-icon'), h('h2', null, 'Multiplayer')),
-        h(
-          'div',
-          { class: 'panel' },
-          h('div', { class: 'field' }, h('label', null, 'Your name'), name),
-          h('div', { class: 'row', style: 'margin-top:14px' }, button('📡 Host', () => this.host(false), 'btn btn-hot'), button('🤖 Vs CPU', () => this.host(true), 'btn btn-sun')),
-          h('p', { class: 'small muted', style: 'text-align:center;margin-bottom:0' }, isAndroidApp ? 'Hosting turns this phone into the game server. Friends on the same Wi-Fi (or your hotspot) can join.' : 'Browser test mode: open this page in a second tab and join from there.'),
-        ),
-        h(
-          'div',
-          { class: 'panel' },
-          h('div', { style: 'display:flex;align-items:center;justify-content:space-between;margin-bottom:10px' }, h('h3', null, 'Games nearby'), h('span', { class: 'spinner' })),
-          this.list,
+        topBar('Versus', () => this.app.goHome()),
+        titledPanel(
+          'Play',
+          'c-pink',
           h(
             'div',
-            { class: 'field', style: 'margin-top:14px' },
-            h('label', null, 'Or join by address'),
-            h('div', { style: 'display:flex;gap:10px' }, addr, button('Join', () => this.joinManual(addr.value), 'btn btn-sky btn-small')),
+            { class: 'dialog' },
+            h('div', { class: 'field' }, h('label', null, 'Your name'), name),
+            h('div', { class: 'row' }, button('Host', () => this.host(false), 'btn c-orange', 'wifi'), button('Vs CPU', () => this.host(true), 'btn c-purple', 'robot')),
+            h('p', { class: 'note' }, isAndroidApp ? 'Hosting turns this phone into the game server. Friends on the same Wi-Fi (or your hotspot) can join.' : 'Browser test mode: open this page in a second tab and join from there.'),
           ),
+        ),
+        titledPanel(
+          'Games nearby',
+          'c-teal',
+          this.list,
+          h('div', { class: 'field', style: 'margin-top:14px' }, h('label', null, 'Or join by address'), h('div', { class: 'input-row' }, addr, button('Join', () => this.joinManual(addr.value), 'btn c-blue', 'join'))),
         ),
       ),
     );
@@ -83,7 +82,7 @@ export class MultiplayerScene implements Scene {
   private renderRooms(): void {
     const items = [...this.rooms.values()];
     if (!items.length) {
-      this.list.replaceChildren(h('div', { class: 'empty small' }, 'Looking for games on your network…'));
+      this.list.replaceChildren(h('div', { class: 'empty' }, icon('radar'), 'Looking for games on your Wi-Fi…'));
       return;
     }
     this.list.replaceChildren(
@@ -92,8 +91,8 @@ export class MultiplayerScene implements Scene {
         const item = h(
           'button',
           { class: 'item', type: 'button', disabled: !open },
-          h('div', { class: 'avatar', style: 'background:#ff5f8f' }, '🎮'),
-          h('div', { class: 'grow' }, h('div', { class: 'name' }, r.room), h('div', { class: 'small muted' }, open ? `${r.players}/${r.max} players · tap to join` : r.phase === 'lobby' ? 'Full' : 'Match in progress')),
+          h('div', { class: 'avatar', style: '--av:#ff6b9d' }, icon('wifi')),
+          h('div', { class: 'grow' }, h('div', { class: 'name' }, r.room), h('div', { class: 'meta' }, open ? `${r.players}/${r.max} players · tap to join` : r.phase === 'lobby' ? 'Full' : 'Match in progress')),
         );
         item.addEventListener('click', () => open && this.join(r.address, r.port || GAME_PORT));
         return item;

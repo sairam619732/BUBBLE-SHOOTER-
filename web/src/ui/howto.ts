@@ -1,5 +1,6 @@
 import type { App, Scene } from '../app';
-import { button, h } from './dom';
+import { h, titledPanel, topBar } from './dom';
+import { IconName, icon } from './icons';
 
 export class HowToScene implements Scene {
   theme = 'menu' as const;
@@ -7,38 +8,37 @@ export class HowToScene implements Scene {
   constructor(private app: App) {}
 
   mount(root: HTMLElement): void {
-    const li = (title: string, text: string) => h('li', null, h('b', null, title + ' '), text);
+    const rule = (ico: IconName, title: string, text: string) => h('div', { class: 'rule' }, icon(ico, 'r-ico'), h('div', null, h('b', null, title), h('span', null, text)));
     root.append(
       h(
         'div',
         { class: 'screen' },
-        h('div', { class: 'topbar' }, button('←', () => this.app.goHome(), 'btn btn-ghost btn-icon'), h('h2', null, 'How to play')),
-        h(
-          'div',
-          { class: 'panel howto' },
+        topBar('How to play', () => this.app.goHome()),
+        titledPanel(
+          'Rules',
+          'c-pink',
           h(
-            'ul',
-            { style: 'padding-left:20px;margin:0' },
-            li('Aim:', 'touch and drag above the launcher. Lift your finger to shoot. Drag back below the launcher to cancel.'),
-            li('Match 3:', 'connect three or more bubbles of the same color to pop them.'),
-            li('Drop:', 'bubbles cut off from the ceiling fall for big bonus points.'),
-            li('Swap:', 'tap the launcher or the small bubble beside it to swap to the next bubble.'),
-            li('Bank shots:', 'bounce off the walls to reach tricky spots.'),
-            li('Power-ups:', 'big pops earn a 💣 bomb (blasts everything nearby, even stones) or a 🌈 rainbow (matches any color).'),
-            li('Stones:', 'grey stones never pop. Knock them loose by clearing what holds them up.'),
-            li('Ceiling drops:', 'from world 4, a steel plate pushes everything down every few shots. Watch the ⬇ counter at the top.'),
+            'div',
+            { class: 'rules' },
+            rule('finger', 'Aim', 'Touch and drag above the cannon, then lift your finger to shoot. Drag below the cannon to cancel.'),
+            rule('pop', 'Match 3', 'Connect three or more bubbles of the same color to pop them.'),
+            rule('drop', 'Drop', 'Bubbles cut off from the ceiling fall for big bonus points.'),
+            rule('swap', 'Swap', 'Tap the cannon or the small bubble beside it to swap to the next bubble.'),
+            rule('bounce', 'Bank shots', 'Bounce off the walls to reach tricky spots.'),
+            rule('bomb', 'Power-ups', 'Big pops earn a bomb (blasts everything nearby, even stones) or a rainbow bubble (matches any color).'),
+            rule('stone', 'Stones', 'Grey stones never pop. Knock them loose by clearing what holds them up.'),
+            rule('ceiling', 'Ceiling drops', 'From world 4, a steel plate pushes everything down every few shots. Watch the counter at the top.'),
           ),
         ),
-        h(
-          'div',
-          { class: 'panel howto' },
-          h('h3', null, 'Modes'),
+        titledPanel(
+          'Modes',
+          'c-teal',
           h(
-            'ul',
-            { style: 'padding-left:20px;margin:8px 0 0' },
-            li('Levels:', '200 levels in 10 worlds. Clear every colored bubble before you run out of shots. Leftover shots add bonus points and stars.'),
-            li('Arcade:', 'a new row drops in on a timer, faster and with more colors as you go. Missed shots speed it up.'),
-            li('Multiplayer:', 'up to 4 players on the same Wi-Fi (or phone hotspot). One phone hosts the game, the others join. Drops and big pops send bubbles to your rivals. Last one standing wins!'),
+            'div',
+            { class: 'rules' },
+            rule('map', 'Levels', '200 levels in 10 worlds. Clear every colored bubble before you run out of shots. Leftover shots add bonus points and stars.'),
+            rule('bolt', 'Arcade', 'A new row drops in on a timer, faster and with more colors as you go. Missed shots speed it up.'),
+            rule('users', 'Versus', 'Up to 4 players on the same Wi-Fi or phone hotspot. One phone hosts, the others join. Drops and big pops send bubbles to your rivals. Last one standing wins!'),
           ),
         ),
       ),
