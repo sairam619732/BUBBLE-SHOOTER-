@@ -1,0 +1,91 @@
+name: Build Android app
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install web dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Test game logic
+        working-directory: web
+        run: npm test
+
+      - name: Build web game
+        working-directory: web
+        run: npm run build
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Prepare release signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload-key.jks"
+            echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/upload-key.jks" >> "$GITHUB_ENV"
+            echo "Release builds will be signed with your upload key."
+          else
+            echo "::notice::No ANDROID_KEYSTORE_BASE64 secret: release AAB/APK will be unsigned. See docs/PLAY_STORE.md."
+          fi
+
+      - name: Build APK + AAB
+        working-directory: android
+        env:
+          VERSION_CODE: ${{ github.run_number }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleDebug bundleRelease assembleRelease
+
+      - name: Upload debug APK (install on your phone to test)
+        uses: actions/upload-artifact@v4
+        with:
+          name: bubble-shooter-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: Upload release AAB (for Google Play)
+        uses: actions/upload-artifact@v4
+        with:
+          name: bubble-shooter-release-aab
+          path: android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
+
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: bubble-shooter-release-apk
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: warn
