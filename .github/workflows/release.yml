@@ -114,7 +114,7 @@ jobs:
           cp "$APK" "dist/BubbleShooterArena-$TAG.apk"
           ls -la dist
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: BubbleShooterArena-${{ env.TAG }}
           path: dist/*
