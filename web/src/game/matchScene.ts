@@ -36,6 +36,7 @@ export class MatchScene implements Scene {
   private playing = false;
   private out = false;
   private pendingSeq = 0;
+  private destroyed = false;
 
   constructor(
     private app: App,
@@ -84,6 +85,7 @@ export class MatchScene implements Scene {
   private startCountdown(n: number): void {
     let k = Math.round(n);
     const show = () => {
+      if (this.destroyed) return;
       if (!this.root) return setTimeout(show, 30);
       const el = h('div', { class: 'countdown' }, h('span', null, k > 0 ? String(k) : 'GO!'));
       this.root.append(el);
@@ -381,7 +383,10 @@ export class MatchScene implements Scene {
       : h('div', null, h('p', { class: 'muted' }, 'Waiting for the host…'), button('Leave', () => this.leave(), 'btn btn-ghost'));
     this.overlay?.remove();
     this.overlay = h('div', { class: 'overlay' }, h('div', { class: 'panel dialog pop-in' }, h('h2', { class: 'result-title' }, won ? 'You win! 🏆' : 'Match over'), h('div', { class: 'list' }, ...rows), actions));
-    setTimeout(() => this.root.append(this.overlay!), 900);
+    const overlay = this.overlay;
+    setTimeout(() => {
+      if (!this.destroyed && this.overlay === overlay) this.root.append(overlay);
+    }, 900);
   }
 
   private async confirmLeave(): Promise<void> {
@@ -402,6 +407,7 @@ export class MatchScene implements Scene {
   }
 
   destroy(): void {
+    this.destroyed = true;
     keepScreenOn(false);
     this.s.client.onEvent = null;
   }

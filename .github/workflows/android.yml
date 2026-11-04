@@ -44,7 +44,7 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v5
 
       - name: Prepare release signing key
         env:
@@ -69,22 +69,31 @@ jobs:
           chmod +x gradlew
           ./gradlew --no-daemon assembleDebug bundleRelease assembleRelease
 
+      - name: Check the game is packaged in the app
+        run: |
+          for apk in android/app/build/outputs/apk/*/*.apk; do
+            echo "== $apk ($(du -h "$apk" | cut -f1))"
+            unzip -l "$apk" | grep -E "assets/www/" | head -20
+            unzip -l "$apk" | grep -q "assets/www/index.html" || { echo "::error::assets/www/index.html missing from $apk"; exit 1; }
+          done
+          ls -la android/app/build/outputs/bundle/release/
+
       - name: Upload debug APK (install on your phone to test)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: bubble-shooter-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
       - name: Upload release AAB (for Google Play)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: bubble-shooter-release-aab
           path: android/app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
 
       - name: Upload release APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: bubble-shooter-release-apk
           path: android/app/build/outputs/apk/release/*.apk

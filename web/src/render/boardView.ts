@@ -116,6 +116,7 @@ export class BoardView {
   private jvx: Float32Array;
   private jvy: Float32Array;
   private pushOffset = 0;
+  private collapsed = false;
   private shakeT = 0;
   private shakeAmp = 0;
   private t = 0;
@@ -317,6 +318,8 @@ export class BoardView {
 
   /** Whole board falls (game over / knocked out). */
   collapse(): void {
+    if (this.collapsed) return;
+    this.collapsed = true;
     const idx: number[] = [];
     const vals: number[] = [];
     for (let i = 0; i < this.board.cells.length; i++) {
@@ -469,7 +472,7 @@ export class BoardView {
     const oy = this.pushOffset;
     for (let i = 0; i < b.cells.length; i++) {
       const v = b.cells[i];
-      if (v === EMPTY || this.hidden[i]) continue;
+      if (v === EMPTY || this.hidden[i] || this.collapsed) continue;
       const r = (i / COLS) | 0;
       let x = b.cellX(r, i % COLS) + this.jx[i];
       let y = b.cellY(r) + this.jy[i] + oy;

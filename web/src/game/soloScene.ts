@@ -35,6 +35,9 @@ export class SoloScene implements Scene {
   private endTimer = 0;
   private shownScore = 0;
   private warned = false;
+  private destroyed = false;
+  private newBest = false;
+  private record = false;
 
   constructor(
     private app: App,
@@ -240,29 +243,45 @@ export class SoloScene implements Scene {
 
   // ------------------------------------------------------------------ end of game
 
+  /** Runs `fn` later unless the player already left this screen. */
+  private later(ms: number, fn: () => void): void {
+    setTimeout(() => {
+      if (!this.destroyed) fn();
+    }, ms);
+  }
+
   private onEnd(): void {
     keepScreenOn(false);
     const g = this.game;
     this.refreshHud();
+    // Save results right away so leaving quickly never loses them.
+    if (this.mode === 'level') {
+      if (g.state === 'won') this.newBest = recordLevel(this.levelId, g.stars(), g.score);
+    } else {
+      this.record = g.score > stats.arcadeBest;
+      if (this.record) stats.arcadeBest = g.score;
+      stats.arcadeBestLevel = Math.max(stats.arcadeBestLevel, g.arcadeLevel);
+      saveStats();
+    }
     if (g.state === 'won') {
       const stones = g.leftoverStones();
       this.view.dropCells(stones, stones.map(() => 9));
       for (const i of stones) g.board.cells[i] = 0;
       sound.win();
       haptic(40);
-      setTimeout(() => this.showLevelWon(), 900);
+      this.later(900, () => this.showLevelWon());
     } else {
       sound.lose();
       haptic(80);
       this.view.shake(6);
-      setTimeout(() => (this.mode === 'level' ? this.showLevelLost() : this.showArcadeOver()), 900);
+      this.later(900, () => (this.mode === 'level' ? this.showLevelLost() : this.showArcadeOver()));
     }
   }
 
   private showLevelWon(): void {
     const g = this.game;
     const stars = g.stars();
-    const newBest = recordLevel(this.levelId, stars, g.score);
+    const newBest = this.newBest;
     const starEl = starsRow(0, 3, 'big-stars');
     const hasNext = this.levelId < LEVEL_COUNT;
     const panel = h(
@@ -289,11 +308,11 @@ export class SoloScene implements Scene {
     this.showOverlay(panel);
     [...starEl.children].forEach((el, i) => {
       if (i < stars) {
-        setTimeout(() => {
+        this.later(350 + i * 380, () => {
           el.classList.add('on');
           sound.star(i);
           haptic(12);
-        }, 350 + i * 380);
+        });
       }
     });
   }
@@ -315,10 +334,7 @@ export class SoloScene implements Scene {
 
   private showArcadeOver(): void {
     const g = this.game;
-    const record = g.score > stats.arcadeBest;
-    if (record) stats.arcadeBest = g.score;
-    stats.arcadeBestLevel = Math.max(stats.arcadeBestLevel, g.arcadeLevel);
-    saveStats();
+    const record = this.record;
     const panel = h(
       'div',
       { class: 'panel dialog pop-in' },
@@ -381,6 +397,7 @@ export class SoloScene implements Scene {
   }
 
   destroy(): void {
+    this.destroyed = true;
     keepScreenOn(false);
   }
 }
