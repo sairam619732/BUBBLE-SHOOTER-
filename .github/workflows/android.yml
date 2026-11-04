@@ -46,24 +46,36 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v5
 
+      # Signing comes from one secret, ANDROID_SIGNING_KEY ("password:base64-keystore"),
+      # or from the four separate ANDROID_KEYSTORE_* / ANDROID_KEY_* secrets.
       - name: Prepare release signing key
         env:
+          SIGNING_KEY: ${{ secrets.ANDROID_SIGNING_KEY }}
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload-key.jks"
-            echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/upload-key.jks" >> "$GITHUB_ENV"
+          if [ -n "$SIGNING_KEY" ]; then
+            KEYSTORE_PASSWORD="$(printf '%s' "${SIGNING_KEY%%:*}" | tr -d ' \r\n')"
+            KEYSTORE_BASE64="${SIGNING_KEY#*:}"
+          fi
+          if [ -n "$KEYSTORE_BASE64" ] && [ -n "$KEYSTORE_PASSWORD" ]; then
+            echo "::add-mask::$KEYSTORE_PASSWORD"
+            printf '%s' "$KEYSTORE_BASE64" | tr -d ' \r\n' | base64 -d > "$RUNNER_TEMP/upload-key.jks"
+            {
+              echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/upload-key.jks"
+              echo "ANDROID_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+              echo "ANDROID_KEY_ALIAS=${KEY_ALIAS:-upload}"
+              echo "ANDROID_KEY_PASSWORD=${KEY_PASSWORD:-$KEYSTORE_PASSWORD}"
+            } >> "$GITHUB_ENV"
             echo "Release builds will be signed with your upload key."
           else
-            echo "::notice::No ANDROID_KEYSTORE_BASE64 secret: release AAB/APK will be unsigned. See docs/PLAY_STORE.md."
+            echo "::notice::No ANDROID_SIGNING_KEY secret: release AAB/APK will be unsigned. See docs/PLAY_STORE.md."
           fi
 
       - name: Build APK + AAB
         working-directory: android
-        env:
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           # Minutes since 2025-01-01: always increases, as Google Play requires.
           export VERSION_CODE=$(( ($(date +%s) - 1735689600) / 60 ))
@@ -120,5 +132,5 @@ jobs:
           jarsigner -verify app/build/outputs/bundle/release/app-release.aab | grep "jar verified"
           test -f app/build/outputs/apk/release/app-release.apk
           unzip -l app/build/outputs/bundle/release/app-release.aab | grep -q "base/assets/www/index.html"
-          echo "Signing setup OK. Add your ANDROID_* secrets to get Play-ready builds."
+          echo "Signing setup OK. Add the ANDROID_SIGNING_KEY secret to get Play-ready builds."
           rm -rf app/build/outputs "$RUNNER_TEMP/ci-test.jks"

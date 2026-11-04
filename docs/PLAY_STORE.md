@@ -21,16 +21,15 @@ Keep `upload-key.jks` and its passwords somewhere safe and private. **Never comm
 
 ## 2. Let GitHub Actions sign your builds
 
-In GitHub, open **Settings → Secrets and variables → Actions → New repository secret** and add these secrets:
+In GitHub, open **Settings → Secrets and variables → Actions → New repository secret** and add **one** secret:
 
-| Secret | Value |
+| Name | Value |
 | --- | --- |
-| `ANDROID_KEYSTORE_BASE64` | Output of `base64 -w0 upload-key.jks` (on macOS: `base64 -i upload-key.jks`) |
-| `ANDROID_KEYSTORE_PASSWORD` | The keystore password |
-| `ANDROID_KEY_ALIAS` | `upload` (or the alias you chose) |
-| `ANDROID_KEY_PASSWORD` | The key password |
+| `ANDROID_SIGNING_KEY` | The keystore password, a colon, then the keystore in base64: `PASSWORD:BASE64`. Make the base64 part with `base64 -w0 upload-key.jks` (on macOS: `base64 -i upload-key.jks`). |
 
-If you already have the key files from Claude (`bubble-shooter-signing-secrets.txt` + `upload-key.jks`), the text file contains all 4 values ready to paste.
+If you already have the key files from Claude (`bubble-shooter-signing-secrets.txt` + `upload-key.jks`), the text file contains the whole value on one line, ready to paste.
+
+This one secret assumes the key alias is `upload` and the key password is the same as the keystore password, which is what the `keytool` command above sets up. If your key is different, add the four separate secrets instead: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`.
 
 ### Make a release (works from your phone)
 
@@ -43,7 +42,7 @@ The release log prints your upload certificate's SHA-256 fingerprint, which you 
 
 The `versionCode` is the number of minutes since 2025-01-01, so it always goes up, as Play requires. The version name comes from what you type, or from the tag.
 
-Every normal push also builds a signed `bubble-shooter-release-aab` artifact once the secrets exist.
+Every normal push also builds a signed `bubble-shooter-release-aab` artifact once the secret exists.
 
 To build locally instead, create `android/keystore.properties` (it is git-ignored):
 
