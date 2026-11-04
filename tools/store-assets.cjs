@@ -12,12 +12,26 @@ const fsrc = (pkg, file) => 'data:font/woff2;base64,' + fs.readFileSync(path.joi
 const res = path.join(root, 'android/app/src/main/res');
 const INK = '#1c1442';
 
-async function shot(page, html, w, h, out) {
+async function shot(page, html, w, h, out, rgba = false) {
   await page.setViewportSize({ width: w, height: h });
   await page.setContent(html, { waitUntil: 'load' });
   await page.evaluate(() => document.fonts.ready);
   fs.mkdirSync(path.dirname(out), { recursive: true });
-  await page.screenshot({ path: out, omitBackground: true });
+  const png = await page.screenshot({ omitBackground: true });
+  if (!rgba) return fs.writeFileSync(out, png);
+  // Google Play wants the store icon as a 32-bit PNG (with an alpha channel). The screenshot
+  // encoder drops alpha for opaque images, so re-encode it through a canvas, which keeps it.
+  const dataUrl = await page.evaluate(async (b64) => {
+    const img = new Image();
+    img.src = 'data:image/png;base64,' + b64;
+    await img.decode();
+    const c = document.createElement('canvas');
+    c.width = img.width;
+    c.height = img.height;
+    c.getContext('2d').drawImage(img, 0, 0);
+    return c.toDataURL('image/png');
+  }, png.toString('base64'));
+  fs.writeFileSync(out, Buffer.from(dataUrl.split(',')[1], 'base64'));
 }
 
 const iconHtml = (size, shape) => `<html><body style="margin:0;background:transparent">
@@ -85,7 +99,7 @@ ${[-40, 120, 300, 470, 640, 820, 980].map((x, i) => `<div class="cloud" style="l
     await shot(page, iconHtml(size, 'rounded'), size, size, path.join(res, `mipmap-${d}/ic_launcher.png`));
     await shot(page, iconHtml(size, 'round'), size, size, path.join(res, `mipmap-${d}/ic_launcher_round.png`));
   }
-  await shot(page, iconHtml(512, 'square'), 512, 512, path.join(root, 'store/play-icon-512.png'));
+  await shot(page, iconHtml(512, 'square'), 512, 512, path.join(root, 'store/play-icon-512.png'), true);
 
   const url = process.argv[2];
   if (url) {
