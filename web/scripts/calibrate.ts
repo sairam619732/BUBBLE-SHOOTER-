@@ -57,8 +57,10 @@ function calibrate(id: number): Result {
   const p80 = sortedShots.length ? pct(sortedShots, 0.8) : 60;
   const limit = Math.ceil(p80 * slack) + 2;
   const finals = order.map((k) => scores[k] + (limit - shots[k]) * SHOT_LEFT_BONUS).sort((a, b) => a - b);
-  const two = Math.round((finals.length ? pct(finals, 0.35) : 500) / 50) * 50;
-  let three = Math.round((finals.length ? pct(finals, 0.8) * 1.05 : 900) / 50) * 50;
+  // Stars are tuned for people, not for the bot: 3 stars at the bot's 25th-percentile score
+  // (a solid run, not a lucky one) and 2 stars at three quarters of that.
+  let three = Math.round((finals.length ? pct(finals, 0.25) : 900) / 50) * 50;
+  const two = Math.max(50, Math.round((three * 0.75) / 50) * 50);
   if (three <= two) three = two + 100;
   const p = levelParams(id);
   const bubbles = base.rows.join('').replace(/[.xw]/g, '').length;
