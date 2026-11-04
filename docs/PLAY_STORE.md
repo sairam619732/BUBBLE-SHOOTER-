@@ -34,9 +34,10 @@ If you already have the key files from Claude (`bubble-shooter-signing-secrets.t
 
 ### Make a release (works from your phone)
 
-1. On GitHub, open **Actions → "Release (signed AAB for Google Play)" → Run workflow**.
-2. Enter the version (e.g. `1.0.0`) and tap **Run workflow**. Pushing a tag such as `v1.0.0` does the same.
-3. When it finishes (about 3 minutes), open the repository's **Releases** page. Download `BubbleShooterArena-v1.0.0.aab` and upload it to Play Console. The `.apk` next to it is signed too, so you can install it directly on phones.
+1. Either:
+   - open **Actions → "Release (signed AAB for Google Play)" → Run workflow**, enter the version (e.g. `1.0.0`) and tap **Run workflow**. This button only appears once the workflow is on the `main` branch.
+   - or open **Releases → Draft a new release**, type a new tag `v1.0.0`, pick the branch with the code as the target, and publish. Creating the tag starts the workflow, which attaches the signed files to that release.
+2. When it finishes (about 3 minutes), open the repository's **Releases** page. Download `BubbleShooterArena-v1.0.0.aab` and upload it to Play Console. The `.apk` next to it is signed too, so you can install it directly on phones.
 
 The release log prints your upload certificate's SHA-256 fingerprint, which you can compare with Play Console → App integrity.
 
