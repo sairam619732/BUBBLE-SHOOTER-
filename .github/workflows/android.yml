@@ -99,3 +99,26 @@ jobs:
           name: bubble-shooter-release-apk
           path: android/app/build/outputs/apk/release/*.apk
           if-no-files-found: warn
+
+      - name: Verify the release AAB is signed
+        if: env.ANDROID_KEYSTORE_FILE != ''
+        run: |
+          jarsigner -verify android/app/build/outputs/bundle/release/app-release.aab | grep "jar verified"
+          keytool -printcert -jarfile android/app/build/outputs/bundle/release/app-release.aab | grep -E "Owner|SHA256:"
+
+      # Without your secrets, prove the signing setup works using a throwaway key.
+      # These test-signed files are deleted, never uploaded.
+      - name: Check release signing works (throwaway key)
+        if: env.ANDROID_KEYSTORE_FILE == ''
+        working-directory: android
+        run: |
+          keytool -genkeypair -keystore "$RUNNER_TEMP/ci-test.jks" -storetype PKCS12 -alias upload -keyalg RSA -keysize 2048 \
+            -validity 30 -dname "CN=CI signing test" -storepass ci-test-pass -keypass ci-test-pass -noprompt
+          ANDROID_KEYSTORE_FILE="$RUNNER_TEMP/ci-test.jks" ANDROID_KEYSTORE_PASSWORD=ci-test-pass \
+            ANDROID_KEY_ALIAS=upload ANDROID_KEY_PASSWORD=ci-test-pass \
+            ./gradlew --no-daemon bundleRelease assembleRelease
+          jarsigner -verify app/build/outputs/bundle/release/app-release.aab | grep "jar verified"
+          test -f app/build/outputs/apk/release/app-release.apk
+          unzip -l app/build/outputs/bundle/release/app-release.aab | grep -q "base/assets/www/index.html"
+          echo "Signing setup OK. Add your ANDROID_* secrets to get Play-ready builds."
+          rm -rf app/build/outputs "$RUNNER_TEMP/ci-test.jks"
