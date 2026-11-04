@@ -70,9 +70,14 @@ export class MatchClient {
   hello(): void {
     this.send({ t: 'hello', v: PROTOCOL_VERSION, name: this.name });
     this.pingTimer = setInterval(() => {
-      this.send({ t: 'ping', ts: Date.now() });
+      this.ping();
       if (Date.now() - this.lastHeard > 12000) this.fail('Lost connection to the host.');
     }, 2000);
+  }
+
+  /** Keep-alive (also measures round-trip time). Sent automatically every 2 seconds. */
+  ping(): void {
+    this.send({ t: 'ping', ts: Date.now() });
   }
 
   get me(): RemoteBoard | undefined {

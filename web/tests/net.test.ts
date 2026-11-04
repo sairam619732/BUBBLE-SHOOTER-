@@ -46,6 +46,8 @@ describe('Listen server match', () => {
     let guard = 0;
     while (server.phase !== 'results' && guard++ < 20000) {
       server.tick(0.05);
+      // Simulated time runs faster than the clients' real-time keep-alive timers.
+      if (guard % 40 === 0) for (const c of [host, guest]) c.ping();
       if (guard % 8 === 0) {
         for (const c of [host, guest]) {
           const me = c.me;
@@ -82,9 +84,9 @@ describe('Listen server match', () => {
     // countdown (3s) + first push (15s). Clients must keep talking or the host drops them.
     for (let i = 0; i < 20 * 19; i++) {
       server.tick(0.05);
-      if (i % 60 === 0) {
-        a.swap();
-        b.swap();
+      if (i % 40 === 0) {
+        a.ping();
+        b.ping();
         await flush();
       }
     }

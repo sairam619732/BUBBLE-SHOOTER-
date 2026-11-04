@@ -46,7 +46,7 @@ keyPassword=...
 1. Go to https://play.google.com/console and choose **Create app**. Set the type to **Game** and pricing to **Free**.
 2. Turn on **Play App Signing**. It is on by default; Google keeps the final signing key and you upload with your upload key.
 3. Upload the `.aab` from the GitHub Actions artifact to **Testing → Internal testing** first. Install it on your phones and try a multiplayer match.
-4. New personal developer accounts must run a **closed test with at least 12 testers for 14 days** before production access is granted. Plan for this.
+4. New personal developer accounts must run a **closed test** before Google grants production access. Last known requirement: at least 12 testers for 14 days. Check Play Console for the current numbers and plan for it.
 
 ## 4. Store listing (copy-paste)
 
