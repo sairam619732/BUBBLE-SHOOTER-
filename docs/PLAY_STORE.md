@@ -30,7 +30,19 @@ In GitHub, open **Settings → Secrets and variables → Actions → New reposit
 | `ANDROID_KEY_ALIAS` | `upload` (or the alias you chose) |
 | `ANDROID_KEY_PASSWORD` | The key password |
 
-Every push now produces a signed `bubble-shooter-release-aab` artifact. The `versionCode` is set from the GitHub run number, so it goes up automatically with each build. To change the visible version (for example `1.1.0`), edit `appVersionName` in `android/app/build.gradle.kts`.
+If you already have the key files from Claude (`bubble-shooter-signing-secrets.txt` + `upload-key.jks`), the text file contains all 4 values ready to paste.
+
+### Make a release (works from your phone)
+
+1. On GitHub, open **Actions → "Release (signed AAB for Google Play)" → Run workflow**.
+2. Enter the version (e.g. `1.0.0`) and tap **Run workflow**. Pushing a tag such as `v1.0.0` does the same.
+3. When it finishes (about 3 minutes), open the repository's **Releases** page. Download `BubbleShooterArena-v1.0.0.aab` and upload it to Play Console. The `.apk` next to it is signed too, so you can install it directly on phones.
+
+The release log prints your upload certificate's SHA-256 fingerprint, which you can compare with Play Console → App integrity.
+
+The `versionCode` is the number of minutes since 2025-01-01, so it always goes up, as Play requires. The version name comes from what you type, or from the tag.
+
+Every normal push also builds a signed `bubble-shooter-release-aab` artifact once the secrets exist.
 
 To build locally instead, create `android/keystore.properties` (it is git-ignored):
 
@@ -53,12 +65,12 @@ keyPassword=...
 **App name:** Bubble Shooter Arena
 
 **Short description (max 80 chars):**
-> Pop bubbles in 60 levels, endless arcade, and Wi-Fi battles with friends!
+> Pop bubbles in 200 levels, endless arcade, and Wi-Fi battles with friends!
 
 **Full description:**
 > Aim, bounce and pop! Bubble Shooter Arena is a bubble shooter with three ways to play:
 >
-> 🎯 LEVELS: 60 hand-tuned puzzles across Candy Meadow, Coral Reef and Starlight. Clear every bubble before you run out of shots and earn up to 3 stars.
+> 🎯 LEVELS: 200 puzzles across 10 worlds, from Candy Meadow to Cosmic Core. Clear every bubble before you run out of shots and earn up to 3 stars. Later worlds add stones and a dropping steel ceiling!
 >
 > ⚡ ARCADE: rows keep dropping and the speed keeps rising. How long can you survive?
 >

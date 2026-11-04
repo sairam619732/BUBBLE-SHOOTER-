@@ -4,7 +4,7 @@ import { LevelDef, levelBoard } from './levels';
 import { Trace, traceShot } from './physics';
 import { PieceQueue } from './queue';
 import { Rng } from './rng';
-import { Outcome, applyOutcome, computeOutcome, fillRandom, isHit, randomRow } from './rules';
+import { Outcome, applyOutcome, computeOutcome, fillRandom, isHit, randomRow, wallRow } from './rules';
 import { SHOT_LEFT_BONUS, rewardFor, shotPoints } from './scoring';
 
 export type SoloMode = 'level' | 'arcade';
@@ -52,6 +52,10 @@ export class SoloGame {
   rowsPushed = 0;
   pushProgress = 0;
   private pushPending = false;
+  /** Level mode: a ceiling drop is waiting for the current shot's animation to finish. */
+  private pressPending = false;
+  /** Level mode: ceiling drops so far. */
+  presses = 0;
 
   constructor(
     readonly mode: SoloMode,
@@ -74,6 +78,17 @@ export class SoloGame {
 
   get shotsLeft(): number {
     return Math.max(0, this.shotLimit - this.shotsUsed);
+  }
+
+  /** Level mode: ceiling drops every this many shots (0 = never). */
+  get pressEvery(): number {
+    return this.mode === 'level' && this.level ? this.level.press : 0;
+  }
+
+  /** Shots until the next ceiling drop (0 when the level has none). */
+  get shotsToPress(): number {
+    const n = this.pressEvery;
+    return n ? n - (this.shotsUsed % n) : 0;
   }
 
   /** Seconds between rows in arcade mode. */
@@ -102,6 +117,7 @@ export class SoloGame {
 
     if (this.mode === 'arcade' && !isHit(outcome)) this.pushProgress += 0.12;
     this.checkEnd();
+    if (this.state === 'playing' && this.pressEvery && this.shotsUsed % this.pressEvery === 0) this.pressPending = true;
     return { trace, piece, outcome, poppedColors, droppedColors, points, combo: this.combo, reward };
   }
 
@@ -114,7 +130,14 @@ export class SoloGame {
    * waits for the next call where it is true.
    */
   update(dt: number, canPush: boolean): PushEvent | null {
-    if (this.mode !== 'arcade' || this.state !== 'playing') return null;
+    if (this.state !== 'playing') return null;
+    if (this.mode === 'level') {
+      if (this.pressPending && canPush) {
+        this.pressPending = false;
+        return this.pressCeiling();
+      }
+      return null;
+    }
     this.pushProgress += dt / this.pushInterval;
     if (this.pushProgress >= 1) this.pushPending = true;
     if (this.pushPending && canPush) {
@@ -140,6 +163,15 @@ export class SoloGame {
       this.queue.setPalette(this.palette);
     }
     this.queue.refresh(this.board);
+    this.checkEnd();
+    return { row };
+  }
+
+  /** Level mode: the steel ceiling moves down one row, pushing every bubble closer. */
+  pressCeiling(): PushEvent {
+    const row = wallRow(this.board);
+    this.board.pushRow(row);
+    this.presses++;
     this.checkEnd();
     return { row };
   }

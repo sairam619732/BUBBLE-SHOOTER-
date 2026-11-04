@@ -1,0 +1,139 @@
+name: Release (signed AAB for Google Play)
+
+# Run it either way:
+#  - push a tag such as v1.0.0, or
+#  - Actions tab -> "Release (signed AAB for Google Play)" -> Run workflow -> enter a version.
+# Needs the 4 signing secrets described in docs/PLAY_STORE.md.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version name shown on Google Play (e.g. 1.0.0)'
+        required: true
+        default: '1.0.0'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check signing secrets
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          missing=""
+          [ -n "$KEYSTORE_BASE64" ] || missing="$missing ANDROID_KEYSTORE_BASE64"
+          [ -n "$KEYSTORE_PASSWORD" ] || missing="$missing ANDROID_KEYSTORE_PASSWORD"
+          [ -n "$KEY_ALIAS" ] || missing="$missing ANDROID_KEY_ALIAS"
+          [ -n "$KEY_PASSWORD" ] || missing="$missing ANDROID_KEY_PASSWORD"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing. Add them in Settings > Secrets and variables > Actions (see docs/PLAY_STORE.md)."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v5
+
+      - name: Work out version
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            VERSION="$INPUT_VERSION"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          if ! echo "$VERSION" | grep -Eq '^[0-9]+(\.[0-9]+){1,2}$'; then
+            echo "::error::Version '$VERSION' should look like 1.0.0"
+            exit 1
+          fi
+          # Minutes since 2025-01-01: always increases, as Google Play requires.
+          CODE=$(( ($(date +%s) - 1735689600) / 60 ))
+          echo "VERSION_NAME=$VERSION" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=$CODE" >> "$GITHUB_ENV"
+          echo "TAG=v$VERSION" >> "$GITHUB_ENV"
+          echo "Version $VERSION (code $CODE)"
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Test and build the game
+        working-directory: web
+        run: |
+          npm ci
+          npm test
+          npm run build
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - name: Build signed AAB + APK
+        working-directory: android
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload-key.jks"
+          export ANDROID_KEYSTORE_FILE="$RUNNER_TEMP/upload-key.jks"
+          chmod +x gradlew
+          ./gradlew --no-daemon bundleRelease assembleRelease
+          rm -f "$RUNNER_TEMP/upload-key.jks"
+
+      - name: Verify signatures and collect files
+        run: |
+          mkdir -p dist
+          AAB=android/app/build/outputs/bundle/release/app-release.aab
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          if [ ! -f "$APK" ]; then echo "::error::Signed APK not found (signing failed?)"; ls -R android/app/build/outputs; exit 1; fi
+          if ! jarsigner -verify "$AAB" | grep -q "jar verified"; then echo "::error::The AAB is not signed"; exit 1; fi
+          echo "Upload key certificate (compare with Play Console > App integrity):"
+          keytool -printcert -jarfile "$AAB" | grep -E "Owner|SHA256:"
+          unzip -l "$AAB" | grep -q "base/assets/www/index.html" || { echo "::error::Game files missing from AAB"; exit 1; }
+          cp "$AAB" "dist/BubbleShooterArena-$TAG.aab"
+          cp "$APK" "dist/BubbleShooterArena-$TAG.apk"
+          ls -la dist
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: BubbleShooterArena-${{ env.TAG }}
+          path: dist/*
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > notes.md <<EOF
+          **Bubble Shooter Arena $VERSION_NAME** (version code $VERSION_CODE)
+
+          - \`BubbleShooterArena-$TAG.aab\`: upload this to **Google Play Console** (signed with your upload key).
+          - \`BubbleShooterArena-$TAG.apk\`: signed APK you can install directly on a phone.
+
+          200 levels in 10 worlds, endless Arcade, and Wi-Fi multiplayer for up to 4 players.
+          EOF
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber
+          else
+            gh release create "$TAG" dist/* --target "$GITHUB_SHA" --title "Bubble Shooter Arena $VERSION_NAME" --notes-file notes.md
+          fi

@@ -1,5 +1,5 @@
 import { Board } from './board';
-import { BOMB, COLS, D, EMPTY, MAX_COLORS, RAINBOW, STONE, isColor } from './constants';
+import { BOMB, COLS, D, EMPTY, MAX_COLORS, RAINBOW, STONE, WALL, isColor } from './constants';
 import { traceShot } from './physics';
 import { Rng } from './rng';
 
@@ -28,7 +28,7 @@ export function computeOutcome(board: Board, r: number, c: number, piece: number
     const y0 = b.cellY(r);
     const hits: { i: number; d: number }[] = [];
     for (let i = 0; i < b.cells.length; i++) {
-      if (b.cells[i] === EMPTY) continue;
+      if (b.cells[i] === EMPTY || b.cells[i] === WALL) continue;
       const d = Math.hypot(b.idxX(i) - x0, b.idxY(i) - y0);
       if (d <= BOMB_RADIUS) hits.push({ i, d });
     }
@@ -127,6 +127,12 @@ export function placeGarbage(board: Board, n: number, palette: readonly number[]
     out.push([i, color]);
   }
   return out;
+}
+
+/** A full row of steel for a ceiling drop (sized for row 0 after the push). */
+export function wallRow(board: Board): number[] {
+  const len = ((board.parity ^ 1) & 1) === 1 ? COLS - 1 : COLS;
+  return new Array<number>(len).fill(WALL);
 }
 
 /** Fills rows 0..rows-1 with random clustered colors. */

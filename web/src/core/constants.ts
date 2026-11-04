@@ -32,6 +32,8 @@ export const COLLIDE_DIST = D * 0.86;
 export const EMPTY = 0;
 /** Colors are 1..MAX_COLORS. */
 export const MAX_COLORS = 6;
+/** Steel ceiling plate added by "ceiling drop" levels. Never pops, never falls. */
+export const WALL = 8;
 /** Unbreakable obstacle: only falls when cut loose from the ceiling. */
 export const STONE = 9;
 /** Shot-only pieces (never stored in the grid). */

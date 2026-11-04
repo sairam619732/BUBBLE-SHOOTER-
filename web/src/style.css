@@ -438,6 +438,41 @@ p {
   box-shadow: 0 5px 0 #4a24b8;
 }
 
+.lvl.w3 {
+  background: linear-gradient(180deg, #ff8a4c, #e5482a);
+  box-shadow: 0 5px 0 #9c2a12;
+}
+
+.lvl.w4 {
+  background: linear-gradient(180deg, #7cc4f5, #3a86d4);
+  box-shadow: 0 5px 0 #23589a;
+}
+
+.lvl.w5 {
+  background: linear-gradient(180deg, #5ccf6b, #2b9a46);
+  box-shadow: 0 5px 0 #1a6a2d;
+}
+
+.lvl.w6 {
+  background: linear-gradient(180deg, #f2b15a, #d0802a);
+  box-shadow: 0 5px 0 #8f5214;
+}
+
+.lvl.w7 {
+  background: linear-gradient(180deg, #f05ad8, #b31fa8);
+  box-shadow: 0 5px 0 #6e0d68;
+}
+
+.lvl.w8 {
+  background: linear-gradient(180deg, #4fe0e0, #1aa3b8);
+  box-shadow: 0 5px 0 #0d6a7a;
+}
+
+.lvl.w9 {
+  background: linear-gradient(180deg, #8b5cf6, #4c1d95);
+  box-shadow: 0 5px 0 #2a0c5e;
+}
+
 .lvl:active {
   transform: translateY(4px);
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
@@ -1026,4 +1061,34 @@ button.item:active {
 
 .toggle > div {
   text-align: left;
+}
+
+.world-locked {
+  width: min(100%, 420px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px dashed rgba(255, 255, 255, 0.3);
+  color: var(--muted);
+}
+
+.world-locked b {
+  color: #fff;
+  font-size: 18px;
+}
+
+.world-locked .lock {
+  font-size: 26px;
+}
+
+.world-sub {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  margin-top: -6px;
+  margin-bottom: 8px;
+  width: min(100%, 420px);
 }

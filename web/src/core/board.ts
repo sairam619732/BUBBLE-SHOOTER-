@@ -1,4 +1,4 @@
-import { COLS, D, DEADLINE_ROW, EMPTY, GRID_ROWS, MAX_COLORS, R, ROW_H, STONE, isColor } from './constants';
+import { COLS, D, DEADLINE_ROW, EMPTY, GRID_ROWS, MAX_COLORS, R, ROW_H, STONE, WALL, isColor } from './constants';
 
 /**
  * Hex bubble grid stored row-major. Rows alternate between COLS cells and COLS - 1 cells
@@ -148,6 +148,13 @@ export class Board {
     return this.lowestRow() >= DEADLINE_ROW;
   }
 
+  /** Number of steel ceiling rows at the top (from ceiling-drop levels). */
+  wallRows(): number {
+    let n = 0;
+    while (n < GRID_ROWS && this.cells[n * COLS] === WALL) n++;
+    return n;
+  }
+
   /**
    * Inserts a new row at the top. Everything moves down one row; the bottom row is lost
    * (it would already be past the deadline). `row` supplies values for the new top row.
@@ -235,7 +242,7 @@ export class Board {
 
   /**
    * Builds a board from text rows. Each row lists its cells left to right:
-   * '.' empty, '1'-'6' colors, 'x' stone. Spaces are ignored.
+   * '.' empty, '1'-'6' colors, 'x' stone, 'w' steel ceiling. Spaces are ignored.
    */
   static fromRows(rows: string[], parity = 0): Board {
     const b = new Board(undefined, parity);
@@ -251,11 +258,13 @@ export class Board {
 function cellChar(v: number): string {
   if (v === EMPTY) return '.';
   if (v === STONE) return 'x';
+  if (v === WALL) return 'w';
   return String(v);
 }
 
 function charCell(ch: string): number {
   if (ch === 'x') return STONE;
+  if (ch === 'w') return WALL;
   const n = ch.charCodeAt(0) - 48;
   return n >= 1 && n <= MAX_COLORS ? n : EMPTY;
 }

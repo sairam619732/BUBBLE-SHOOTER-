@@ -1,4 +1,4 @@
-import { BOMB, MAX_COLORS, R, RAINBOW, STONE } from '../core/constants';
+import { BOMB, MAX_COLORS, R, RAINBOW, STONE, WALL } from '../core/constants';
 
 export interface BubbleColor {
   name: string;
@@ -62,7 +62,7 @@ export class BubbleSprites {
     ctx.translate(r, r);
     const rr = r * 0.97;
 
-    if (v === STONE) {
+    if (v === STONE || v === WALL) {
       drawStone(ctx, rr);
     } else if (v === BOMB) {
       drawBomb(ctx, rr);

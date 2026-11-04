@@ -76,7 +76,7 @@ export class SoloScene implements Scene {
 
     if (this.mode === 'level') {
       const l = this.game.level!;
-      this.banner(`Level ${l.id}`, `Clear the bubbles in ${l.shots} shots`);
+      this.banner(`Level ${l.id}`, l.press ? `⬇ The ceiling drops every ${l.press} shots!` : `Clear the bubbles in ${l.shots} shots`);
     } else {
       this.banner('Arcade', 'Rows keep coming. Survive!');
     }
@@ -196,7 +196,9 @@ export class SoloScene implements Scene {
       const push = this.game.update(dt, !this.view.busy);
       if (push) {
         this.view.pushed();
+        if (this.mode === 'level') this.view.shake(5);
         this.syncLauncher();
+        this.refreshHud();
         haptic(20);
       }
       const low = this.game.board.lowestRow();
@@ -236,6 +238,11 @@ export class SoloScene implements Scene {
       this.hud.pill.classList.toggle('low', left <= 5);
       const l = g.level!;
       this.hud.fill.style.width = `${Math.min(100, (g.score / l.stars[1]) * 100)}%`;
+      if (l.press) {
+        const n = g.shotsToPress;
+        this.hud.title.textContent = `Level ${l.id} · ⬇ ${n}`;
+        this.hud.title.style.color = n <= 1 ? '#ff9aaa' : '';
+      }
     } else {
       this.hud.pillValue.textContent = String(Math.max(stats.arcadeBest, g.score));
     }

@@ -12,6 +12,7 @@ import {
   SHOOTER_X,
   SHOOTER_Y,
   SHOT_SPEED,
+  WALL,
   WORLD_H,
 } from '../core/constants';
 import { Trace, pointAlong, polylineLength, traceShot } from '../core/physics';
@@ -323,7 +324,7 @@ export class BoardView {
     const idx: number[] = [];
     const vals: number[] = [];
     for (let i = 0; i < this.board.cells.length; i++) {
-      if (this.board.cells[i] !== EMPTY) {
+      if (this.board.cells[i] !== EMPTY && this.board.cells[i] !== WALL) {
         idx.push(i);
         vals.push(this.board.cells[i]);
       }
@@ -470,9 +471,11 @@ export class BoardView {
     ctx.clip();
     if (this.dimmed) ctx.globalAlpha = 0.45;
     const oy = this.pushOffset;
+    const wallRows = b.wallRows();
+    if (wallRows > 0) this.drawPlate(ctx, b.cellY(wallRows - 1) + ROW_H - R + 1 + oy);
     for (let i = 0; i < b.cells.length; i++) {
       const v = b.cells[i];
-      if (v === EMPTY || this.hidden[i] || this.collapsed) continue;
+      if (v === EMPTY || v === WALL || this.hidden[i] || this.collapsed) continue;
       const r = (i / COLS) | 0;
       let x = b.cellX(r, i % COLS) + this.jx[i];
       let y = b.cellY(r) + this.jy[i] + oy;
@@ -549,6 +552,50 @@ export class BoardView {
     }
     ctx.globalAlpha = 1;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+  }
+
+  /** Steel ceiling plate from ceiling-drop levels, drawn as one solid piece. */
+  private drawPlate(ctx: CanvasRenderingContext2D, bottom: number): void {
+    const top = -FRAME;
+    const w = BOARD_W + FRAME * 2;
+    const g = ctx.createLinearGradient(0, top, 0, bottom);
+    g.addColorStop(0, '#4a5163');
+    g.addColorStop(0.7, '#8e98ad');
+    g.addColorStop(1, '#c4ccda');
+    ctx.fillStyle = g;
+    ctx.fillRect(-FRAME, top, w, bottom - top);
+    ctx.strokeStyle = 'rgba(25,30,45,0.35)';
+    ctx.lineWidth = 1.5;
+    for (let y = bottom - ROW_H; y > top + 4; y -= ROW_H) {
+      ctx.beginPath();
+      ctx.moveTo(-FRAME, y);
+      ctx.lineTo(BOARD_W + FRAME, y);
+      ctx.stroke();
+    }
+    // hazard stripe along the bottom edge
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(-FRAME, bottom - 7, w, 7);
+    ctx.clip();
+    ctx.fillStyle = '#ffcc33';
+    ctx.fillRect(-FRAME, bottom - 7, w, 7);
+    ctx.fillStyle = '#2a2a33';
+    for (let x = -FRAME - 12; x < BOARD_W + FRAME; x += 16) {
+      ctx.beginPath();
+      ctx.moveTo(x, bottom);
+      ctx.lineTo(x + 7, bottom);
+      ctx.lineTo(x + 14, bottom - 7);
+      ctx.lineTo(x + 7, bottom - 7);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    for (let x = D / 2; x < BOARD_W; x += D) {
+      ctx.beginPath();
+      ctx.arc(x, bottom - 13, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   private drawFrame(ctx: CanvasRenderingContext2D): void {

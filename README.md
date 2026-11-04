@@ -1,6 +1,6 @@
 # Bubble Shooter Arena
 
-A bubble shooter for Android with **60 levels**, an endless **Arcade** mode, and **local multiplayer for up to 4 players** over Wi-Fi. One phone hosts the match as a listen server and plays too; the other phones join.
+A bubble shooter for Android with **200 levels**, an endless **Arcade** mode, and **local multiplayer for up to 4 players** over Wi-Fi. One phone hosts the match as a listen server and plays too; the other phones join.
 
 <p>
   <img src="store/screenshots/3-gameplay.png" width="200" alt="Level gameplay">
@@ -10,7 +10,7 @@ A bubble shooter for Android with **60 levels**, an endless **Arcade** mode, and
 
 ## Features
 
-- **Levels:** 60 levels across 3 worlds, with 1–3 stars each. Every level was played by a bot during development to make sure it can be beaten within its shot limit.
+- **Levels:** 200 levels across 10 worlds, with 1–3 stars each. From world 4, a steel ceiling drops every few shots. Every level was played by a bot during development to make sure it can be beaten within its shot limit.
 - **Arcade:** a new row drops in on a timer. It gets faster and adds colors as you level up, and missed shots fill the timer faster.
 - **Multiplayer (LAN listen server):**
   - The host phone runs the authoritative game server and also plays.

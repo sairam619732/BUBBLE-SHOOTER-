@@ -10,6 +10,13 @@ export const THEMES = {
   meadow: { top: '#6a5af9', bottom: '#ff8fc0', bokeh: 'rgba(255,255,255,0.10)' },
   reef: { top: '#0b3d74', bottom: '#19b8c6', bokeh: 'rgba(190,255,255,0.10)' },
   starlight: { top: '#0d0930', bottom: '#4b1d82', bokeh: 'rgba(200,180,255,0.08)', stars: true },
+  lava: { top: '#2a0712', bottom: '#c2410c', bokeh: 'rgba(255,170,90,0.10)' },
+  frost: { top: '#1e3a8a', bottom: '#5fa8d8', bokeh: 'rgba(230,250,255,0.14)' },
+  jungle: { top: '#052e16', bottom: '#3f8f3a', bokeh: 'rgba(200,255,150,0.09)' },
+  desert: { top: '#5b2108', bottom: '#c97a2b', bokeh: 'rgba(255,230,170,0.10)' },
+  neon: { top: '#05010f', bottom: '#7a0f6b', bokeh: 'rgba(0,255,230,0.08)', stars: true },
+  crystal: { top: '#1e1b4b', bottom: '#0e7490', bokeh: 'rgba(160,255,250,0.10)', stars: true },
+  cosmic: { top: '#020108', bottom: '#3b0764', bokeh: 'rgba(255,200,255,0.07)', stars: true },
   arcade: { top: '#170f45', bottom: '#d93a7a', bokeh: 'rgba(255,150,220,0.09)', stars: true },
   versus: { top: '#0c1f3d', bottom: '#5a2a8a', bokeh: 'rgba(150,200,255,0.08)', stars: true },
 } satisfies Record<string, Theme>;
@@ -17,7 +24,7 @@ export const THEMES = {
 export type ThemeName = keyof typeof THEMES;
 
 export function worldTheme(world: number): ThemeName {
-  return (['meadow', 'reef', 'starlight'] as const)[world] ?? 'meadow';
+  return (['meadow', 'reef', 'starlight', 'lava', 'frost', 'jungle', 'desert', 'neon', 'crystal', 'cosmic'] as const)[world] ?? 'meadow';
 }
 
 interface Orb {

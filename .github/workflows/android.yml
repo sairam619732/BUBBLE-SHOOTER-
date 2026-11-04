@@ -61,11 +61,12 @@ jobs:
       - name: Build APK + AAB
         working-directory: android
         env:
-          VERSION_CODE: ${{ github.run_number }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
+          # Minutes since 2025-01-01: always increases, as Google Play requires.
+          export VERSION_CODE=$(( ($(date +%s) - 1735689600) / 60 ))
           chmod +x gradlew
           ./gradlew --no-daemon assembleDebug bundleRelease assembleRelease
 

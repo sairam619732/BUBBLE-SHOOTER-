@@ -39,7 +39,7 @@ ${[
   [700, 60, 120, '#ff4757'], [820, 40, 90, '#ffc93c'], [900, 150, 110, '#22d3ee'], [760, 190, 100, '#2ed573'],
   [640, 300, 120, '#a55eea'], [860, 300, 130, '#3d6bff'], [960, 420, 90, '#ff4757'], [600, 140, 70, '#ffc93c'],
 ].map(([x, y, s, c]) => `<div class="b" style="left:${x - s / 2}px;top:${y - s / 2}px;width:${s}px;height:${s}px;background:radial-gradient(circle at 32% 30%,#fff 0,${c} 45%,${c} 70%,rgba(0,0,0,.25) 100%)"></div>`).join('')}
-<div class="t"><div class="t1">Bubble<br>Shooter</div><div class="t2">ARENA</div><div class="t3">60 levels · Arcade · Wi-Fi multiplayer</div></div>
+<div class="t"><div class="t1">Bubble<br>Shooter</div><div class="t2">ARENA</div><div class="t3">200 levels · Arcade · Wi-Fi multiplayer</div></div>
 </body></html>`;
 
 (async () => {
@@ -72,7 +72,7 @@ async function screenshots(url) {
   // Level 14 gameplay with the aim guide showing.
   await page.evaluate(() => {
     const { app } = window.__bsa;
-    localStorage.setItem('bsa.v1.progress', JSON.stringify({ unlocked: 23, stars: Object.fromEntries([...Array(22)].map((_, i) => [i + 1, 1 + ((i * 7) % 3)])), best: {} }));
+    localStorage.setItem('bsa.v1.progress', JSON.stringify({ unlocked: 75, stars: Object.fromEntries([...Array(74)].map((_, i) => [i + 1, 1 + ((i * 7) % 3)])), best: {} }));
   });
   await page.reload();
   await page.waitForTimeout(700);
