@@ -99,7 +99,7 @@ export class MenuScene implements Scene {
         ),
         logo,
         h('div', { class: 'menu-main' }, play, h('div', { class: 'tiles' }, arcade, versus)),
-        h('div', { class: 'menu-foot' }, 'Plays offline · no ads · up to 4 players on Wi-Fi'),
+        h('div', { class: 'menu-foot' }, 'Plays offline · up to 4 players on Wi-Fi'),
       ),
     );
   }

@@ -72,6 +72,8 @@ public class MainActivity extends Activity {
 
         net = new NetBridge(this, web);
         web.addJavascriptInterface(net, "BSANative");
+        AdsManager ads = new AdsManager(this, (kind, rewarded) -> net.emitAdClosed(kind, rewarded));
+        net.setAds(ads);
         web.setWebViewClient(new AssetClient());
 
         web.setOnApplyWindowInsetsListener((v, insets) -> {
@@ -90,6 +92,8 @@ public class MainActivity extends Activity {
         } else {
             web.loadUrl(START_URL);
         }
+        // Google's consent form (where required), then the ads SDK.
+        ads.start();
     }
 
     @Override

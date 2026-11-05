@@ -1,5 +1,6 @@
 import type { App, Scene } from '../app';
 import { LEVEL_COUNT } from '../core/levels';
+import { adsStatus, showPrivacyOptions } from '../platform/ads';
 import { appVersion, openUrl } from '../platform/native';
 import { setSymbols } from '../render/boardView';
 import { resetProgress, saveSettings, settings, stats, totalStars } from '../storage';
@@ -53,7 +54,8 @@ export class SettingsScene implements Scene {
             h(
               'div',
               { class: 'row' },
-              button('Privacy', () => openUrl(PRIVACY_URL), 'btn btn-sm c-cream'),
+              button('Privacy policy', () => openUrl(PRIVACY_URL), 'btn btn-sm c-cream'),
+              adsStatus().privacy ? button('Ad choices', () => showPrivacyOptions(), 'btn btn-sm c-cream') : null,
               button(
                 'Reset progress',
                 async () => {

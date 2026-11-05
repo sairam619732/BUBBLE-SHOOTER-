@@ -65,3 +65,33 @@ describe('Ceiling drop', () => {
     expect(b.wallRows()).toBe(1);
   });
 });
+
+describe('Extra shots (rewarded ad)', () => {
+  it('continues a level that ran out of shots, once', () => {
+    const g = new SoloGame('level', { ...getLevel(1), shots: 2 }, 3);
+    g.fire(Math.PI / 2);
+    g.fire(Math.PI / 2);
+    expect(g.state).toBe('lost');
+    expect(g.lostReason).toBe('shots');
+    expect(g.addShots(5)).toBe(true);
+    expect(g.state).toBe('playing');
+    expect(g.lostReason).toBeNull();
+    expect(g.shotsLeft).toBe(5);
+    // Only a level that is out of shots can be continued.
+    expect(g.addShots(5)).toBe(false);
+    for (let k = 0; k < 5 && g.state === 'playing'; k++) g.fire(Math.PI / 2);
+    if (g.state === 'lost') expect(g.lostReason).toBe('shots');
+  });
+
+  it('does not continue arcade games or deadline losses', () => {
+    const arcade = new SoloGame('arcade', null, 4);
+    arcade.state = 'lost';
+    arcade.lostReason = 'deadline';
+    expect(arcade.addShots(5)).toBe(false);
+    const g = new SoloGame('level', getLevel(1), 5);
+    g.state = 'lost';
+    g.lostReason = 'deadline';
+    expect(g.addShots(5)).toBe(false);
+    expect(g.state).toBe('lost');
+  });
+});
