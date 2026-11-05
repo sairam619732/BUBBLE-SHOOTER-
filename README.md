@@ -22,7 +22,8 @@ A bubble shooter for Android with **200 levels**, an endless **Arcade** mode, an
   - Aim guide with wall bounces and a landing preview.
   - Chain-pop effects, haptics, and synthesized sound effects and music (no audio files needed).
   - Color-blind symbols.
-  - Works offline, with no ads, accounts or tracking.
+  - Works offline, with no account.
+- **Ads (Android app):** Google AdMob. Watch an optional video for 5 extra shots when a level runs out, plus an occasional ad between games. Consent is handled by Google's consent form. Setup: [docs/PLAY_STORE.md](docs/PLAY_STORE.md#3-set-up-admob-ads).
 
 ## Project layout
 
@@ -68,7 +69,7 @@ In a browser, multiplayer works between tabs of the same browser (test mode). On
 
 ## Releasing on Google Play
 
-See **[docs/PLAY_STORE.md](docs/PLAY_STORE.md)**. It covers the signing key, GitHub secrets, version codes, store listing text, Data safety answers and the content rating.
+See **[docs/PLAY_STORE.md](docs/PLAY_STORE.md)**. It covers the signing key, GitHub secrets, AdMob setup, version codes, store listing text, Data safety answers and the content rating.
 
 ## Regenerating levels
 

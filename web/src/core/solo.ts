@@ -41,7 +41,7 @@ export class SoloGame {
   bestCombo = 0;
   shotsUsed = 0;
   /** Level mode: shots allowed. Arcade: Infinity. */
-  readonly shotLimit: number;
+  shotLimit: number;
   /** Level mode: bonus added for unused shots on a win. */
   endBonus = 0;
   /** Why the game was lost. */
@@ -185,6 +185,15 @@ export class SoloGame {
     for (let k = 0; k < 4; k++) this.pushRow();
     this.pushProgress = 0;
     return bonus;
+  }
+
+  /** Continues a level that ran out of shots, with `n` more (the rewarded-ad offer). */
+  addShots(n: number): boolean {
+    if (this.mode !== 'level' || this.state !== 'lost' || this.lostReason !== 'shots') return false;
+    this.shotLimit = this.shotsUsed + n;
+    this.state = 'playing';
+    this.lostReason = null;
+    return true;
   }
 
   private checkEnd(): void {

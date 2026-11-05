@@ -5,12 +5,13 @@ import { LEVEL_COUNT, getLevel } from '../core/levels';
 import { angleTo, clampAngle } from '../core/physics';
 import { randomSeed } from '../core/rng';
 import { ShotEvent, SoloGame, SoloMode } from '../core/solo';
+import { AD_EXTRA_SHOTS, adBreak, adsStatus, showRewardedAd } from '../platform/ads';
 import { keepScreenOn } from '../platform/native';
 import { ThemeName, worldTheme } from '../render/background';
 import { BoardView } from '../render/boardView';
 import { THEME_INFO } from '../render/scenes';
 import { progress, recordLevel, saveStats, settings, stats } from '../storage';
-import { button, h, haptic, iconButton, ribbon } from '../ui/dom';
+import { button, h, haptic, iconButton, ribbon, toast } from '../ui/dom';
 import { IconName, icon } from '../ui/icons';
 import { LevelSelectScene } from '../ui/levelSelect';
 import { pauseMenu } from '../ui/pauseMenu';
@@ -42,6 +43,9 @@ export class SoloScene implements Scene {
   private shownScore = 0;
   private warned = false;
   private destroyed = false;
+  /** The level was already continued with extra shots from an ad. */
+  private revived = false;
+  private leaving = false;
   private newBest = false;
   private record = false;
 
@@ -324,9 +328,9 @@ export class SoloScene implements Scene {
       h(
         'div',
         { class: 'actions' },
-        iconButton('map', 'Levels', () => this.app.go(new LevelSelectScene(this.app)), 'c-cream'),
-        iconButton('restart', 'Play again', () => this.app.go(new SoloScene(this.app, 'level', this.levelId)), 'c-orange'),
-        hasNext ? button([h('span', null, 'Next'), icon('next')], () => this.app.go(new SoloScene(this.app, 'level', this.levelId + 1)), 'btn c-lime') : h('p', { class: 'note' }, 'You beat every level!'),
+        iconButton('map', 'Levels', () => this.leave(() => this.app.go(new LevelSelectScene(this.app))), 'c-cream'),
+        iconButton('restart', 'Play again', () => this.leave(() => this.app.go(new SoloScene(this.app, 'level', this.levelId))), 'c-orange'),
+        hasNext ? button([h('span', null, 'Next'), icon('next')], () => this.leave(() => this.app.go(new SoloScene(this.app, 'level', this.levelId + 1))), 'btn c-lime') : h('p', { class: 'note' }, 'You beat every level!'),
       ),
     );
     this.showOverlay(panel, true);
@@ -352,14 +356,51 @@ export class SoloScene implements Scene {
       h('p', null, shots ? `So close! ${g.board.countColored()} bubbles left.` : 'The bubbles reached the line.'),
       h('div', { class: 'score-label' }, 'Score'),
       h('div', { class: 'score-big' }, g.score.toLocaleString()),
+      shots && !this.revived && adsStatus().rewarded ? this.extraShotsButton() : null,
       h(
         'div',
         { class: 'actions' },
-        iconButton('map', 'Levels', () => this.app.go(new LevelSelectScene(this.app)), 'c-cream'),
-        button('Try again', () => this.app.go(new SoloScene(this.app, 'level', this.levelId)), 'btn c-orange', 'restart'),
+        iconButton('map', 'Levels', () => this.leave(() => this.app.go(new LevelSelectScene(this.app))), 'c-cream'),
+        button('Try again', () => this.leave(() => this.app.go(new SoloScene(this.app, 'level', this.levelId))), 'btn c-orange', 'restart'),
       ),
     );
     this.showOverlay(panel);
+  }
+
+  /** "Watch an ad for 5 more shots" (once per level). */
+  private extraShotsButton(): HTMLButtonElement {
+    const b = button([h('span', null, `+${AD_EXTRA_SHOTS} shots`), h('small', { class: 'ad-tag' }, 'Watch ad')], () => void this.watchForShots(b), 'btn btn-wide c-purple', 'play');
+    return b;
+  }
+
+  private async watchForShots(b: HTMLButtonElement): Promise<void> {
+    b.disabled = true;
+    const earned = await showRewardedAd();
+    if (this.destroyed) return;
+    if (!earned || !this.game.addShots(AD_EXTRA_SHOTS)) {
+      b.disabled = false;
+      toast('No extra shots this time. Watch the whole video to get them.');
+      return;
+    }
+    this.revived = true;
+    this.overlay?.remove();
+    this.overlay = null;
+    this.ended = false;
+    this.endTimer = 0;
+    keepScreenOn(true);
+    this.syncLauncher();
+    this.refreshHud();
+    this.banner(`+${AD_EXTRA_SHOTS} shots`, 'Keep going!', 'star', 'c-lime');
+  }
+
+  /** Leaves a finished game, with an occasional ad break first. */
+  private leave(go: () => void): void {
+    if (this.leaving) return;
+    this.leaving = true;
+    const early = this.mode === 'level' && this.levelId <= 5;
+    void (early ? Promise.resolve() : adBreak()).then(() => {
+      if (!this.destroyed) go();
+    });
   }
 
   private showArcadeOver(): void {
@@ -382,8 +423,8 @@ export class SoloScene implements Scene {
       h(
         'div',
         { class: 'actions' },
-        iconButton('home', 'Menu', () => this.app.goHome(), 'c-cream'),
-        button('Play again', () => this.app.go(new SoloScene(this.app, 'arcade')), 'btn c-lime', 'restart'),
+        iconButton('home', 'Menu', () => this.leave(() => this.app.goHome()), 'c-cream'),
+        button('Play again', () => this.leave(() => this.app.go(new SoloScene(this.app, 'arcade'))), 'btn c-lime', 'restart'),
       ),
     );
     this.showOverlay(panel, record);

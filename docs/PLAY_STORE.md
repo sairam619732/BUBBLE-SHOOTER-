@@ -53,14 +53,35 @@ keyAlias=upload
 keyPassword=...
 ```
 
-## 3. Create the app in Play Console
+## 3. Set up AdMob (ads)
+
+The Android app shows two kinds of Google AdMob ads: a **rewarded video** (watch it for 5 extra shots when a level runs out of shots, once per level) and an occasional **interstitial** between games (at most one every 3 games and 3 minutes, never in the first minute or in levels 1 to 5, never during multiplayer). Until your own IDs are in place, builds show Google's test ads and the Release workflow stops with an error.
+
+1. Sign in at https://admob.google.com with the Google account you use for Play Console and finish the account setup.
+2. **Apps → Add app → Android.** When asked whether the app is on a supported app store, choose **No** for now. Name it **Bubble Shooter Arena** and copy its **App ID** (`ca-app-pub-…~…`).
+3. In that app, **Ad units → Add ad unit**:
+   - **Rewarded**, named "Extra shots" (reward amount 5, item "shots"). Copy its ID (`ca-app-pub-…/…`).
+   - **Interstitial**, named "Between games". Copy its ID.
+4. **Privacy & messaging → European regulations (GDPR) → Create message**, select the app and publish it. This is the consent form the app shows in the EEA, the UK and Switzerland. Players can reopen it from **Settings → Ad choices**.
+5. Put the three IDs in `android/gradle.properties`:
+   ```properties
+   admobAppId=ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY
+   admobRewardedId=ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ
+   admobInterstitialId=ca-app-pub-XXXXXXXXXXXXXXXX/WWWWWWWWWW
+   ```
+   These IDs are not secret (they ship inside the app), so they can be committed. Then run the Release workflow with a new version, for example `1.1.0`.
+6. Once the app is live on Google Play, open it in AdMob → **App settings → Add app store details** to link the listing. AdMob reviews the app before it serves full ads, so expect few ads at first.
+
+Never tap your own live ads. Debug builds always use test ad units for that reason.
+
+## 4. Create the app in Play Console
 
 1. Go to https://play.google.com/console and choose **Create app**. Set the type to **Game** and pricing to **Free**.
 2. Turn on **Play App Signing**. It is on by default; Google keeps the final signing key and you upload with your upload key.
 3. Upload the `.aab` from the GitHub Actions artifact to **Testing → Internal testing** first. Install it on your phones and try a multiplayer match.
 4. New personal developer accounts must run a **closed test** before Google grants production access. Last known requirement: at least 12 testers for 14 days. Check Play Console for the current numbers and plan for it.
 
-## 4. Store listing (copy-paste)
+## 5. Store listing (copy-paste)
 
 **App name:** Bubble Shooter Arena
 
@@ -81,7 +102,7 @@ keyPassword=...
 > • Bombs and rainbow bubbles from big combos
 > • Satisfying chain pops, haptics and music
 > • Color-blind friendly symbols
-> • Plays fully offline, with no ads and no tracking
+> • Plays offline, no account needed
 
 **Graphics** (in `store/`):
 
@@ -93,19 +114,25 @@ keyPassword=...
 
 **Privacy policy URL:** https://github.com/sairam619732/BUBBLE-SHOOTER-/blob/main/docs/privacy-policy.md
 
-The URL works once this branch is merged into `main`. You can also host the file anywhere public.
+The repository is public, so this link opens for everyone. You can also host the file anywhere public.
 
-## 5. App content answers
+## 6. App content answers
 
-- **Data safety:**
-  - "Does your app collect or share any of the required user data types?" → **No**.
-  - Multiplayer traffic stays on the local network and is not collected.
-- **Ads:** No.
-- **Content rating (IARC questionnaire):** Puzzle game, with no violence, user-generated content, chat, gambling or location sharing. Expected rating: Everyone / PEGI 3.
-- **Target audience:** 13+ is simplest. If you include under-13s, the Families policy applies; the app collects no data, so that is also fine.
+- **Ads:** **Yes, my app contains ads.**
+- **Advertising ID:** **Yes**, the app uses it (through the Google Mobile Ads SDK) for **Advertising or marketing**, **Analytics** and **Fraud prevention, security and compliance**.
+- **Data safety:** the game itself collects nothing, but the Google Mobile Ads SDK does, so the answers come from Google's guidance for its SDK: search for "Google Mobile Ads SDK Play data disclosure" on developers.google.com and check it when you fill in the form, because Google updates it. At the time of writing it covers:
+  - "Does your app collect or share any of the required user data types?" → **Yes**.
+  - **Location → Approximate location** (estimated from the IP address).
+  - **App activity → App interactions** (ad views and taps).
+  - **App info and performance → Crash logs, Diagnostics, Other app performance data.**
+  - **Device or other IDs → Device or other IDs** (the advertising ID).
+  - Purposes: **Advertising or marketing**, **Analytics**, **Fraud prevention, security and compliance**.
+  - Data is encrypted in transit: **Yes**. Multiplayer traffic stays on the local network and is not collected.
+- **Content rating (IARC questionnaire):** Puzzle game, with no violence, user-generated content, chat, gambling or location sharing. Expected rating: Everyone / PEGI 3. Ads in the app are limited to a PG rating.
+- **Target audience:** **13 and over** (not designed for children). Including under-13s would bring the Families policy and child-directed ad settings.
 - **News app:** No. **Government app:** No. **Financial features:** No.
 
-## 6. Requirements already handled
+## 7. Requirements already handled
 
 - Target API level 36 (Android 16), as Play has required since August 31, 2026. The minimum supported version is Android 7.0 (API 24).
 - 64-bit: the app has no native code, so it is automatically compliant.

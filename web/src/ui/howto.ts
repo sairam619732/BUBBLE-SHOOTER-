@@ -1,4 +1,6 @@
 import type { App, Scene } from '../app';
+import { AD_EXTRA_SHOTS } from '../platform/ads';
+import { isAndroidApp } from '../platform/native';
 import { h, titledPanel, topBar } from './dom';
 import { IconName, icon } from './icons';
 
@@ -28,6 +30,7 @@ export class HowToScene implements Scene {
             rule('bomb', 'Power-ups', 'Big pops earn a bomb (blasts everything nearby, even stones) or a rainbow bubble (matches any color).'),
             rule('stone', 'Stones', 'Grey stones never pop. Knock them loose by clearing what holds them up.'),
             rule('ceiling', 'Ceiling drops', 'From world 4, a steel plate pushes everything down every few shots. Watch the counter at the top.'),
+            isAndroidApp ? rule('play', 'Extra shots', `Out of shots? Watch a short video for ${AD_EXTRA_SHOTS} more, once per level.`) : null,
           ),
         ),
         titledPanel(

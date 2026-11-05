@@ -1301,6 +1301,16 @@ button.item:disabled {
 .row > .btn-round {
   flex: none;
 }
+.btn .ad-tag {
+  padding: 3px 8px 4px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.24);
+  font: 400 12px/1 var(--display);
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  text-shadow: var(--out1);
+}
 .actions {
   display: flex;
   align-items: center;

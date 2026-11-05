@@ -20,6 +20,11 @@ export interface AndroidBridge {
   exitApp(): void;
   openUrl(url: string): void;
   appVersion(): string;
+  /** Ads (Android app only): JSON {"rewarded":bool,"interstitial":bool,"privacy":bool}. */
+  adsStatus?(): string;
+  showRewarded?(): void;
+  showInterstitial?(): void;
+  showPrivacyOptions?(): void;
 }
 
 export type NativeEvent =
@@ -33,7 +38,8 @@ export type NativeEvent =
   | { type: 'back' }
   | { type: 'pause' }
   | { type: 'resume' }
-  | { type: 'insets'; top: number; bottom: number; left: number; right: number };
+  | { type: 'insets'; top: number; bottom: number; left: number; right: number }
+  | { type: 'ad:closed'; kind: 'rewarded' | 'interstitial'; rewarded: boolean };
 
 declare global {
   interface Window {
