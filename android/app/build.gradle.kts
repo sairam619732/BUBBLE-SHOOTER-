@@ -18,6 +18,19 @@ fun signingValue(env: String, prop: String): String? =
 
 val releaseStoreFile = signingValue("ANDROID_KEYSTORE_FILE", "storeFile")?.let { rootProject.file(it) }
 
+// ---- AdMob -----------------------------------------------------------------------------
+// Your IDs go in android/gradle.properties (admobAppId, admobRewardedId, admobInterstitialId).
+// Empty values fall back to Google's sample IDs, which only ever show test ads.
+// Debug builds always use test ad units, so you never see (or click) your own live ads.
+val testAdmobAppId = "ca-app-pub-3940256099942544~3347511713"
+val testRewardedId = "ca-app-pub-3940256099942544/5224354917"
+val testInterstitialId = "ca-app-pub-3940256099942544/1033173712"
+fun gradleProp(name: String, fallback: String): String =
+    findProperty(name)?.toString()?.trim()?.takeIf { it.isNotEmpty() } ?: fallback
+val admobAppId = gradleProp("admobAppId", testAdmobAppId)
+val admobRewardedId = gradleProp("admobRewardedId", testRewardedId)
+val admobInterstitialId = gradleProp("admobInterstitialId", testInterstitialId)
+
 // versionCode must increase for every Play upload. CI passes the run number.
 val appVersionCode = (System.getenv("VERSION_CODE") ?: findProperty("versionCode")?.toString() ?: "1").toInt()
 val appVersionName = System.getenv("VERSION_NAME") ?: findProperty("versionName")?.toString() ?: "1.0.0"
@@ -32,6 +45,11 @@ android {
         targetSdk = 36
         versionCode = appVersionCode
         versionName = appVersionName
+        manifestPlaceholders["admobAppId"] = admobAppId
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     signingConfigs {
@@ -51,10 +69,14 @@ android {
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.findByName("release")
+            buildConfigField("String", "REWARDED_ID", "\"$admobRewardedId\"")
+            buildConfigField("String", "INTERSTITIAL_ID", "\"$admobInterstitialId\"")
         }
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
+            buildConfigField("String", "REWARDED_ID", "\"$testRewardedId\"")
+            buildConfigField("String", "INTERSTITIAL_ID", "\"$testInterstitialId\"")
         }
     }
 
@@ -67,6 +89,12 @@ android {
         // The game is portrait-only by design; large screens letterbox it.
         disable += setOf("DiscouragedApi", "LockedOrientationActivity")
     }
+}
+
+dependencies {
+    // Newest release within these major versions, resolved at build time.
+    implementation("com.google.android.gms:play-services-ads:24.+")
+    implementation("com.google.android.ump:user-messaging-platform:3.+")
 }
 
 // ---- Web game assets ------------------------------------------------------------------

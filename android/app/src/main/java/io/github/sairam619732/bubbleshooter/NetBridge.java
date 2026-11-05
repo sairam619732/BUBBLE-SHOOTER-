@@ -75,6 +75,9 @@ public class NetBridge {
     private volatile DatagramSocket responder;
     private WifiManager.MulticastLock multicastLock;
 
+    // Ads (null in builds without ads)
+    private volatile AdsManager ads;
+
     // Client state
     private volatile Peer client;
     private final AtomicInteger clientGen = new AtomicInteger();
@@ -87,6 +90,10 @@ public class NetBridge {
 
     boolean isNetworkActive() {
         return server != null || client != null;
+    }
+
+    void setAds(AdsManager ads) {
+        this.ads = ads;
     }
 
     // ------------------------------------------------------------------ events to JS
@@ -105,6 +112,11 @@ public class NetBridge {
         } catch (JSONException ignored) {
         }
         emit(o);
+    }
+
+    /** A full-screen ad closed. `rewarded` says whether the player earned the reward. */
+    void emitAdClosed(String kind, boolean rewarded) {
+        emit(put(put(obj("type", "ad:closed"), "kind", kind), "rewarded", rewarded));
     }
 
     private static JSONObject obj(String k, Object v) {
@@ -515,6 +527,34 @@ public class NetBridge {
         } catch (Exception e) {
             return "?";
         }
+    }
+
+    // ------------------------------------------------------------------ ads
+
+    @JavascriptInterface
+    public String adsStatus() {
+        AdsManager a = ads;
+        return a == null ? "{}" : a.statusJson();
+    }
+
+    @JavascriptInterface
+    public void showRewarded() {
+        AdsManager a = ads;
+        if (a == null) emitAdClosed("rewarded", false);
+        else main.post(a::showRewarded);
+    }
+
+    @JavascriptInterface
+    public void showInterstitial() {
+        AdsManager a = ads;
+        if (a == null) emitAdClosed("interstitial", false);
+        else main.post(a::showInterstitial);
+    }
+
+    @JavascriptInterface
+    public void showPrivacyOptions() {
+        AdsManager a = ads;
+        if (a != null) main.post(a::showPrivacyOptions);
     }
 
     void shutdown() {
