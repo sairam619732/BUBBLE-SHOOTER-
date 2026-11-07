@@ -51,8 +51,9 @@ function waitClosed(kind: 'rewarded' | 'interstitial'): Promise<boolean> {
     const off = onNative((e) => {
       if (e.type === 'ad:closed' && e.kind === kind) finish(!!e.rewarded);
     });
-    // Safety net in case the close event never arrives. (Page timers pause while an ad is open.)
-    const timer = setTimeout(() => finish(false), 120_000);
+    // Safety net in case the close event never arrives. Page timers keep running while an ad
+    // is open, so allow plenty of time: a player may sit on an ad's end screen for a while.
+    const timer = setTimeout(() => finish(false), 15 * 60_000);
   });
 }
 
