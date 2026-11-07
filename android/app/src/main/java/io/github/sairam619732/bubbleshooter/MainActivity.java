@@ -36,6 +36,7 @@ public class MainActivity extends Activity {
     private static final String START_URL = "https://" + ASSET_HOST + "/www/index.html";
 
     private WebView web;
+    private AdsManager ads;
     private NetBridge net;
     private OnBackInvokedCallback backCallback;
 
@@ -72,7 +73,7 @@ public class MainActivity extends Activity {
 
         net = new NetBridge(this, web);
         web.addJavascriptInterface(net, "BSANative");
-        AdsManager ads = new AdsManager(this, (kind, rewarded) -> net.emitAdClosed(kind, rewarded));
+        ads = new AdsManager(this, (kind, rewarded) -> net.emitAdClosed(kind, rewarded));
         net.setAds(ads);
         web.setWebViewClient(new AssetClient());
 
@@ -120,8 +121,10 @@ public class MainActivity extends Activity {
         super.onPause();
         net.emitSimple("pause");
         web.onPause();
-        // Keep timers running while a multiplayer session is open so the host keeps serving.
-        if (!net.isNetworkActive()) web.pauseTimers();
+        // pauseTimers() freezes every WebView in the app, including the ad's own, which would
+        // leave a full-screen ad stuck with a dead close button. So never call it while an ad
+        // is up. Also keep timers running in multiplayer so the host keeps serving.
+        if (!net.isNetworkActive() && (ads == null || !ads.isShowing())) web.pauseTimers();
     }
 
     @Override

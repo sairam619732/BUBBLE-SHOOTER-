@@ -184,6 +184,11 @@ final class AdsManager {
         ad.show(activity);
     }
 
+    /** True while a full-screen ad is on screen. */
+    boolean isShowing() {
+        return showing;
+    }
+
     /** Google's form for changing ad consent (Settings > Privacy choices). */
     void showPrivacyOptions() {
         UserMessagingPlatform.showPrivacyOptionsForm(activity, formError -> startAds());
