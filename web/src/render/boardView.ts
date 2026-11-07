@@ -96,6 +96,8 @@ export class BoardView {
   ox = 0;
   oy = 0;
   scale = 1;
+  /** The static tray, pre-drawn at `k` device pixels per world unit. */
+  private tray: { k: number; c: HTMLCanvasElement } | null = null;
   cur = 0;
   nxt = 0;
   aimAngle: number | null = null;
@@ -470,7 +472,7 @@ export class BoardView {
     ctx.setTransform(dpr * s, 0, 0, dpr * s, dpr * (this.ox + sx * s), dpr * (this.oy + sy * s));
     this.sprites.configure(s * dpr, symbolsOn());
 
-    this.drawFrame(ctx);
+    this.drawFrame(ctx, s * dpr);
 
     const b = this.board;
     const danger = b.lowestRow() >= DEADLINE_ROW - 2;
@@ -629,8 +631,27 @@ export class BoardView {
     }
   }
 
-  /** Gold-rimmed tray with a dark glass well behind the bubbles. */
-  private drawFrame(ctx: CanvasRenderingContext2D): void {
+  /** The tray (copied from a cache) plus the live deadline line. `k` = device px per world unit. */
+  private drawFrame(ctx: CanvasRenderingContext2D, k: number): void {
+    const pad = 4;
+    const x0 = -FRAME - pad;
+    const y0 = -FRAME - pad;
+    if (!this.tray || this.tray.k !== k) {
+      const c = document.createElement('canvas');
+      c.width = Math.ceil((BOARD_W + (FRAME + pad) * 2) * k);
+      c.height = Math.ceil((WORLD_H + FRAME + pad * 2 + 8) * k);
+      const g = c.getContext('2d')!;
+      g.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
+      this.paintTray(g);
+      this.tray = { k, c };
+    }
+    const c = this.tray.c;
+    ctx.drawImage(c, x0, y0, c.width / k, c.height / k);
+    this.drawDeadline(ctx);
+  }
+
+  /** Gold-rimmed tray with a dark glass well behind the bubbles. Static, so it is cached. */
+  private paintTray(ctx: CanvasRenderingContext2D): void {
     const w = BOARD_W;
     const x0 = -FRAME;
     const y0 = -FRAME;
@@ -710,7 +731,11 @@ export class BoardView {
     // launcher zone tint
     ctx.fillStyle = 'rgba(255,255,255,0.045)';
     ctx.fillRect(1, DEADLINE_Y, w - 2, wellH - DEADLINE_Y - 2);
-    // deadline
+  }
+
+  /** Dashed deadline; pulses red when bubbles get close. */
+  private drawDeadline(ctx: CanvasRenderingContext2D): void {
+    const w = BOARD_W;
     const danger = this.board.lowestRow() >= DEADLINE_ROW - 2;
     const pulse = danger ? 0.5 + 0.5 * Math.sin(this.t * 10) : 0;
     if (danger) {

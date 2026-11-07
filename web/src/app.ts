@@ -31,6 +31,10 @@ export class App {
   h = 0;
   dpr = 1;
   private last = 0;
+  /** Average time between animation frames (ms), to spot 120 Hz+ screens. */
+  private rafGap = 16.7;
+  private lastRaf = 0;
+  private skipNext = false;
   private home: (() => Scene) | null = null;
   private dialogOpen = false;
 
@@ -50,10 +54,18 @@ export class App {
     this.go(home());
     this.last = performance.now();
     const frame = (t: number) => {
+      requestAnimationFrame(frame);
+      const gap = t - this.lastRaf;
+      this.lastRaf = t;
+      if (gap > 0 && gap < 50) this.rafGap += (gap - this.rafGap) * 0.05;
+      // On 120 Hz+ screens, draw every other frame: still 60+ fps, half the GPU work.
+      if (this.rafGap < 10) {
+        this.skipNext = !this.skipNext;
+        if (this.skipNext) return;
+      }
       const dt = Math.min(0.05, Math.max(0, (t - this.last) / 1000));
       this.last = t;
       this.tick(dt);
-      requestAnimationFrame(frame);
     };
     requestAnimationFrame(frame);
   }
@@ -83,7 +95,8 @@ export class App {
   }
 
   private resize(): void {
-    this.dpr = Math.min(window.devicePixelRatio || 1, 3);
+    // Above 2x, phones look the same but the canvas gets much bigger to fill every frame.
+    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.w = window.innerWidth;
     this.h = window.innerHeight;
     this.canvas.width = Math.round(this.w * this.dpr);

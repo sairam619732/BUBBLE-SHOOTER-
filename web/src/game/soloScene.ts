@@ -41,6 +41,7 @@ export class SoloScene implements Scene {
   private ended = false;
   private endTimer = 0;
   private shownScore = 0;
+  private fillPct = -1;
   private warned = false;
   private destroyed = false;
   /** The level was already continued with extra shots from an ad. */
@@ -231,7 +232,11 @@ export class SoloScene implements Scene {
       this.hud.score.textContent = this.shownScore.toLocaleString();
     }
     if (this.mode === 'arcade') {
-      this.hud.fill.style.width = `${Math.min(100, this.game.pushProgress * 100)}%`;
+      const pct = Math.round(Math.min(100, this.game.pushProgress * 100) * 2) / 2;
+      if (pct !== this.fillPct) {
+        this.fillPct = pct;
+        this.hud.fill.style.width = `${pct}%`;
+      }
       const t = `Arcade · Lv ${this.game.arcadeLevel}`;
       if (this.hud.title.textContent !== t) this.hud.title.textContent = t;
     }

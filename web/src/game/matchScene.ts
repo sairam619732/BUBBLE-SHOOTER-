@@ -28,6 +28,7 @@ export class MatchScene implements Scene {
   private scoreEl!: HTMLElement;
   private aliveEl!: HTMLElement;
   private fill!: HTMLElement;
+  private fillPct = -1;
   private labels!: HTMLElement;
   private hudEl!: HTMLElement;
   private overlay: HTMLElement | null = null;
@@ -346,7 +347,11 @@ export class MatchScene implements Scene {
     for (const m of this.minis) m.view.update(dt);
     if (this.playing) {
       this.pushIn = Math.max(0, this.pushIn - dt);
-      this.fill.style.width = `${(1 - this.pushIn / this.pushTotal) * 100}%`;
+      const pct = Math.round((1 - this.pushIn / this.pushTotal) * 200) / 2;
+      if (pct !== this.fillPct) {
+        this.fillPct = pct;
+        this.fill.style.width = `${pct}%`;
+      }
     }
   }
 
