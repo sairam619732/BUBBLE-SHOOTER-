@@ -1,7 +1,8 @@
 import type { App, Scene } from '../app';
 import { MatchScene } from '../game/matchScene';
 import { MpSession, setSession } from '../game/mpSession';
-import { CpuLevel, MAX_PLAYERS } from '../net/protocol';
+import { CpuLevel, GAME_PORT, MAX_PLAYERS } from '../net/protocol';
+import { makeRoomCode } from '../net/roomCode';
 import { button, h, iconButton, titledPanel, toast, topBar } from './dom';
 import { icon } from './icons';
 import { MultiplayerScene } from './mpMenu';
@@ -24,6 +25,17 @@ export class LobbyScene implements Scene {
     private s: MpSession,
   ) {}
 
+  /** How friends can join: a 5-character room code, or the address if no code fits. */
+  private joinInfo(): HTMLElement[] {
+    const { addresses, port } = this.s;
+    const code = port ? makeRoomCode(addresses[0] ?? '', port) : addresses[0];
+    const lead = h('p', { class: 'note' }, 'Friends on the same Wi-Fi see this room under “Games nearby”, or can join with this code:');
+    const tail = h('p', { class: 'note' }, port ? "Same Wi-Fi or this phone's hotspot" : 'Browser test mode: join from another tab.');
+    if (code) return [lead, h('div', { class: 'addr room-code' }, code), tail];
+    const where = addresses.slice(0, 3).map((a) => h('div', { class: 'addr' }, port && port !== GAME_PORT ? `${a}:${port}` : a));
+    return [h('p', { class: 'note' }, 'Friends on the same Wi-Fi see this room under “Games nearby”. They can also join with:'), ...where, tail];
+  }
+
   mount(root: HTMLElement): void {
     const c = this.s.client;
     const isHost = this.s.isHost;
@@ -35,7 +47,7 @@ export class LobbyScene implements Scene {
         titledPanel(
           'Your room',
           'c-teal',
-          h('div', { class: 'dialog' }, h('p', { class: 'note' }, 'Friends on the same Wi-Fi see this room under “Games nearby”. They can also join with:'), ...this.s.addresses.slice(0, 3).map((a) => h('div', { class: 'addr' }, a)), h('p', { class: 'note' }, this.s.port ? `Port ${this.s.port} · same Wi-Fi or this phone's hotspot` : 'Browser test mode: join from another tab.')),
+          h('div', { class: 'dialog' }, ...this.joinInfo()),
         ),
       );
     }

@@ -1,8 +1,9 @@
 import type { App, Scene } from '../app';
 import { MpSession, setSession } from '../game/mpSession';
 import { GAME_PORT, PROTOCOL_VERSION, RoomAd } from '../net/protocol';
+import { addressForCode, cleanCode, parseRoomCode } from '../net/roomCode';
 import { createJoinNet } from '../net/transports';
-import { isAndroidApp } from '../platform/native';
+import { isAndroidApp, native } from '../platform/native';
 import { saveSettings, settings } from '../storage';
 import { button, h, titledPanel, toast, topBar } from './dom';
 import { icon } from './icons';
@@ -33,7 +34,7 @@ export class MultiplayerScene implements Scene {
       settings.name = name.value.trim().slice(0, 14) || playerName();
       saveSettings();
     });
-    const addr = h('input', { class: 'input', placeholder: isAndroidApp ? 'e.g. 192.168.1.23' : 'Host id', inputmode: 'decimal', autocomplete: 'off' }) as HTMLInputElement;
+    const addr = h('input', { class: 'input', placeholder: 'e.g. K7P2M', maxlength: '21', autocomplete: 'off', autocapitalize: 'characters', spellcheck: 'false' }) as HTMLInputElement;
     this.list = h('div', { class: 'list' });
 
     root.append(
@@ -56,7 +57,7 @@ export class MultiplayerScene implements Scene {
           'Games nearby',
           'c-teal',
           this.list,
-          h('div', { class: 'field', style: 'margin-top:14px' }, h('label', null, 'Or join by address'), h('div', { class: 'input-row' }, addr, button('Join', () => this.joinManual(addr.value), 'btn c-blue', 'join'))),
+          h('div', { class: 'field', style: 'margin-top:14px' }, h('label', null, 'Or join with a room code'), h('div', { class: 'input-row' }, addr, button('Join', () => this.joinManual(addr.value), 'btn c-blue', 'join'))),
         ),
       ),
     );
@@ -117,9 +118,23 @@ export class MultiplayerScene implements Scene {
 
   private joinManual(value: string): void {
     const v = value.trim();
-    if (!v) return toast('Enter the address shown on the host phone');
-    const [address, port] = v.split(':');
-    this.join(address, Number(port) || GAME_PORT);
+    if (!v) return toast('Enter the room code shown on the host phone');
+    // Old-style address, e.g. 192.168.1.23 or 192.168.1.23:47778.
+    if (v.includes('.')) {
+      const [address, port] = v.split(':');
+      return void this.join(address, Number(port) || GAME_PORT);
+    }
+    const code = parseRoomCode(v);
+    if (!code) return toast('Room codes are 5 letters and numbers, like K7P2M');
+    if (!isAndroidApp) return void this.join(cleanCode(v), 0);
+    let mine: string[] = [];
+    try {
+      mine = JSON.parse(native?.localAddresses?.() ?? '[]');
+    } catch {
+      /* no address info */
+    }
+    const seen = [...this.rooms.values()].map((r) => r.address);
+    void this.join(addressForCode(code, seen, mine), code.port);
   }
 
   private async join(address: string, port: number): Promise<void> {

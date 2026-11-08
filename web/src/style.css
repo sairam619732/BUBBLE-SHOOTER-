@@ -1439,6 +1439,12 @@ button.item:disabled {
   -webkit-user-select: text;
   user-select: text;
 }
+.addr.room-code {
+  font-size: 44px;
+  letter-spacing: 6px;
+  text-align: center;
+  margin: 4px 0;
+}
 .note {
   font: 700 13px/1.4 var(--body);
   color: var(--muted);

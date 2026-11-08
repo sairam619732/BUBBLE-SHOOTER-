@@ -74,6 +74,8 @@ export class SoloGame {
       this.shotLimit = Infinity;
     }
     this.queue = new PieceQueue(this.rng, this.palette, this.board);
+    // Arcade gets up to 6 colors and keeps adding rows, so favor colors the player can hit.
+    if (mode === 'arcade') this.queue.helpChance = 0.75;
   }
 
   get shotsLeft(): number {

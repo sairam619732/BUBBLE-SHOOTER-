@@ -1,5 +1,6 @@
 import type { Link } from './link';
 import { GAME_PORT, RoomAd } from './protocol';
+import { CODE_ALPHABET, CODE_LENGTH } from './roomCode';
 import type { MatchServer } from './server';
 import { native, onNative } from '../platform/native';
 
@@ -138,7 +139,8 @@ type ChanMsg =
   | { k: 'close'; from: string; to: string };
 
 const CHANNEL = 'bsa-lan';
-const tabId = () => 'tab-' + Math.random().toString(36).slice(2, 8);
+/** Each tab's id is also its room code in browser test mode. */
+const tabId = () => Array.from({ length: CODE_LENGTH }, () => CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)]).join('');
 
 class BrowserHost implements HostNet {
   readonly label = 'Browser tabs';
